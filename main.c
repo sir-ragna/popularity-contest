@@ -229,9 +229,10 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: %s [64ELFbinary]...\n", argv[0]);
     exit(1);
   }
-  for (int i = 0; i < argc; i++ ) {
+  for (int i = 1; i < argc; i++ ) {
     fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
     popularity_contest(argv[i]);
+    fflush(stdout);
     fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
     fprintf(stderr, "%s\n", "--------------------------------------------------------------------------------");
   }
