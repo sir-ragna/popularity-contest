@@ -6,36 +6,37 @@
 #include <string.h>
 #include <assert.h>
 
-/* The ELF header */
-typedef struct
+/* The first 16 bytes
+ * This will tell use bit-Arch, endianness, ... */
+typedef struct 
 {
-  uint8_t magic[4]; /* 0x7F, 'E', 'L', 'F' */
-  uint8_t class;    /* 1 = 32-bit
-                     * 2 = 64-bit */
-  uint8_t data;     /* 1 = little-endian 
-                     * 2 = big-endian  */
-  uint8_t version;  /* ELF version (always 1) */
-  uint8_t osabi;    /* Target OS
-                     * 0 = System V
-                     * 2 = Netbsd
-                     * 3 = Linux
-                     * 4 = GNU/Hurd
-                     * 6 = Solaris
-                     * 9 = Freebsd
-                     * 12 = Openbsd */
+  uint8_t magic[4];   /* 0x7F, 'E', 'L', 'F' */
+  uint8_t class;      /* 1 = 32-bit
+                       * 2 = 64-bit */
+  uint8_t data;       /* 1 = little-endian 
+                       * 2 = big-endian  */
+  uint8_t version;    /* ELF version (always 1) */
+  uint8_t osabi;      /* Target OS
+                       * 0 = System V
+                       * 2 = Netbsd
+                       * 3 = Linux
+                       * 4 = GNU/Hurd
+                       * 6 = Solaris
+                       * 9 = Freebsd
+                       * 12 = Openbsd */
   uint8_t abiversion; /* ?? */
-  uint8_t pad;      /* unused, should be zero */
+  uint8_t pad[7];     /* 7 bytes of padding, not used */
 } Ident;
 
 typedef struct
 {
   Ident	ident;
-  uint32_t e_type;		  /* Object file type 
+  uint16_t e_type;		  /* Object file type 
                          * 1 = Relocatable file
                          * 2 = Executable file 
                          * 3 = Shared object file
                          * (Not interested in the rest ATM */
-  uint32_t	e_machine;  /* Machine
+  uint16_t	e_machine;  /* Machine
                          * 62 = AMD x86-64
                          * 3 = Intel 80386
                          */
@@ -44,30 +45,32 @@ typedef struct
   uint32_t	e_phoff;		/* Program header table file offset */
   uint32_t	e_shoff;		/* Section header table file offset */
   uint32_t	e_flags;		/* Processor-specific flags */
-  uint32_t	e_ehsize;		/* ELF header size in bytes */
-  uint32_t	e_phentsize;		/* Program header table entry size */
-  uint32_t	e_phnum;		/* Program header table entry count */
-  uint32_t	e_shentsize;		/* Section header table entry size */
-  uint32_t	e_shnum;		/* Section header table entry count */
-  uint32_t	e_shstrndx;		/* Section header string table index */
+  uint16_t	e_ehsize;		/* ELF header size in bytes. 
+                         * 52 Bytes for 32-bit  */
+  uint16_t	e_phentsize;		/* Program header table entry size */
+  uint16_t	e_phnum;		/* Program header table entry count */
+  uint16_t	e_shentsize;		/* Section header table entry size */
+  uint16_t	e_shnum;		/* Section header table entry count */
+  uint16_t	e_shstrndx;		/* Section header string table index */
 } Elf32_header;
 
 typedef struct
 {
   Ident	ident;
-  uint32_t e_type;		  
-  uint32_t	e_machine;		
+  uint16_t e_type;		  
+  uint16_t	e_machine;		
   uint32_t	e_version;		/* Object file version */
   uint64_t	e_entry;		/* Entry point virtual address */
   uint64_t	e_phoff;		/* Program header table file offset */
   uint64_t	e_shoff;		/* Section header table file offset */
   uint32_t	e_flags;		/* Processor-specific flags */
-  uint32_t	e_ehsize;		/* ELF header size in bytes */
-  uint32_t	e_phentsize;		/* Program header table entry size */
-  uint32_t	e_phnum;		/* Program header table entry count */
-  uint32_t	e_shentsize;		/* Section header table entry size */
-  uint32_t	e_shnum;		/* Section header table entry count */
-  uint32_t	e_shstrndx;		/* Section header string table index */
+  uint16_t	e_ehsize;		/* ELF header size in bytes 
+                         * 64 Bytes for 64-bit */
+  uint16_t	e_phentsize;		/* Program header table entry size */
+  uint16_t	e_phnum;		/* Program header table entry count */
+  uint16_t	e_shentsize;		/* Section header table entry size */
+  uint16_t	e_shnum;		/* Section header table entry count */
+  uint16_t	e_shstrndx;		/* Section header string table index */
 } Elf64_header;
 
 typedef struct {
@@ -323,6 +326,32 @@ int parse_64_bit_header(FILE *fp) {
     break;
   }
 
+  if (elfheader.e_machine != 62) {
+    puts("Only AMD x86-64 machine is supported (for 64-bit systems)");
+    exit(1);  
+  } else {
+    puts("Machine: AMD x86-64");
+  }
+
+  if (elfheader.e_version != 1) {
+    puts("Can only handle ELF version 1");
+    exit(1);
+  }
+
+  printf("Entrypoint: %#016x\n", elfheader.e_entry);
+  printf("Program header table offset: %#016x\n", elfheader.e_phoff);
+  printf("Section header table offset: %#016x\n", elfheader.e_shoff);
+  printf("Flags: %#08x\n", elfheader.e_flags);
+  printf("ELF Header size: %#04x (%i bytes)\n", elfheader.e_ehsize, elfheader.e_ehsize);
+
+  if (elfheader.e_ehsize != 64) {
+    // I don't know in which situation this isn't 64.
+    puts("Abnormal ELF Header size for 64-bit");
+    exit(2);
+  }
+
+  printf("Section header table entry count: %i\n", elfheader.e_shnum);
+  printf("Section header string table index: %i\n", elfheader.e_shstrndx);
 
   return 0;
 }
@@ -404,7 +433,11 @@ int parse_elf_header(const char *filename) {
 
   // Depending on 32-bit or 64-bit
   // read out the rest of the header
-
+  if (ident.class == 1) {
+    // TODO
+  } else if (ident.class == 2) {
+    parse_64_bit_header(fp);
+  }
 
   if (fp) {
     fclose(fp);
