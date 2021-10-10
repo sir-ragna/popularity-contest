@@ -6,8 +6,71 @@
 #include <string.h>
 #include <assert.h>
 
+/* The ELF header */
+typedef struct
+{
+  uint8_t magic[4]; /* 0x7F, 'E', 'L', 'F' */
+  uint8_t class;    /* 1 = 32-bit
+                     * 2 = 64-bit */
+  uint8_t data;     /* 1 = little-endian 
+                     * 2 = big-endian  */
+  uint8_t version;  /* ELF version (always 1) */
+  uint8_t osabi;    /* Target OS
+                     * 0 = System V
+                     * 2 = Netbsd
+                     * 3 = Linux
+                     * 4 = GNU/Hurd
+                     * 6 = Solaris
+                     * 9 = Freebsd
+                     * 12 = Openbsd */
+  uint8_t abiversion; /* ?? */
+  uint8_t pad;      /* unused, should be zero */
+} Ident;
+
+typedef struct
+{
+  Ident	ident;
+  uint32_t e_type;		  /* Object file type 
+                         * 1 = Relocatable file
+                         * 2 = Executable file 
+                         * 3 = Shared object file
+                         * (Not interested in the rest ATM */
+  uint32_t	e_machine;  /* Machine
+                         * 62 = AMD x86-64
+                         * 3 = Intel 80386
+                         */
+  uint32_t	e_version;	/* ELF Version (again) set to 1 */
+  uint32_t	e_entry;		/* Entry point virtual address */
+  uint32_t	e_phoff;		/* Program header table file offset */
+  uint32_t	e_shoff;		/* Section header table file offset */
+  uint32_t	e_flags;		/* Processor-specific flags */
+  uint32_t	e_ehsize;		/* ELF header size in bytes */
+  uint32_t	e_phentsize;		/* Program header table entry size */
+  uint32_t	e_phnum;		/* Program header table entry count */
+  uint32_t	e_shentsize;		/* Section header table entry size */
+  uint32_t	e_shnum;		/* Section header table entry count */
+  uint32_t	e_shstrndx;		/* Section header string table index */
+} Elf32_header;
+
+typedef struct
+{
+  Ident	ident;
+  uint32_t e_type;		  
+  uint32_t	e_machine;		
+  uint32_t	e_version;		/* Object file version */
+  uint64_t	e_entry;		/* Entry point virtual address */
+  uint64_t	e_phoff;		/* Program header table file offset */
+  uint64_t	e_shoff;		/* Section header table file offset */
+  uint32_t	e_flags;		/* Processor-specific flags */
+  uint32_t	e_ehsize;		/* ELF header size in bytes */
+  uint32_t	e_phentsize;		/* Program header table entry size */
+  uint32_t	e_phnum;		/* Program header table entry count */
+  uint32_t	e_shentsize;		/* Section header table entry size */
+  uint32_t	e_shnum;		/* Section header table entry count */
+  uint32_t	e_shstrndx;		/* Section header string table index */
+} Elf64_header;
+
 typedef struct {
-    // unsigned short NMD_X86_INSTRUCTION;
     unsigned int counter; // count occurences
     char instr_str[32]; // store mnemonic
 } InstructionCounter;
@@ -227,12 +290,154 @@ int popularity_contest(const char *filename) {
   return 0;
 }
 
-int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s [64ELFbinary]...\n", argv[0]);
+/* Returns a non-zero value on failure */
+int parse_64_bit_header(FILE *fp) {
+  Elf64_header elfheader;
+  
+  if (fseek(fp, 0, SEEK_SET) != 0) {
+    /* Could use rewind(), but that doesn't have 
+     * error handling. So it is worse? */
+    perror("fseek");
     return 1;
   }
-  for (int i = 1; i < argc; i++ ) {
+
+  if (fread(&elfheader, sizeof(elfheader), 1, fp) != 1) {
+    perror("fread");
+    return 2;
+  }
+
+  switch (elfheader.e_type)
+  {
+  case 1:
+    puts("Type: Relocatable file");
+    break;
+  case 2:
+    puts("Type: Executable file");
+    break;
+  case 3:
+    puts("Type: Shared object file");
+    break;
+  default:
+    puts("Unsupported object file type");
+    exit(1);
+    break;
+  }
+
+
+  return 0;
+}
+
+
+
+/* Returns a non-zero value on failure */
+int parse_elf_header(const char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    perror("fopen");
+    return 1;
+  }
+  Ident ident;
+  size_t ret = fread(&ident, sizeof(Ident), 1, fp);
+  if (ret != 1) {
+    perror("fread");
+    return 2;
+  }
+
+  if (ident.class == 1) {
+    puts("Class: 32-bit");
+  } else if (ident.class == 2) {
+    puts("Class: 64-bit");
+  } else {
+    puts("Unsupported architecture");
+    return 3;
+  }
+
+  if (ident.data == 1) {
+    puts("Data: little endian");
+  } else if (ident.data == 2) {
+    puts("Data: big endian");
+  } else {
+    puts("Unsupported data byte");
+    return 4;
+  }
+
+  if (ident.version != 1) {
+    puts("Unsupported ELF version");
+    return 5;
+  }
+
+  switch (ident.osabi)
+  {
+  case 0:
+    puts("OS ABI: UNIX - System V");
+    /* This is the default for most compilers.
+     * This means that no OS specific extensions are used. */
+    break;
+  case 2:
+    puts("OS ABI: NetBSD");
+    break;
+  case 3:
+    puts("OS ABI: Linux");
+    break;
+  case 4:
+    puts("OS ABI: GNU/Hurd");
+    break;
+  case 6:
+    puts("OS ABI: Solaris");
+    break;
+  case 9:
+    puts("OS ABI: FreeBSD");
+    break;
+  case 12:
+    puts("OS ABI: OpenBSD");
+    break;
+  default:
+    puts("OS ABI: Unknown");
+    return 6;
+    break;
+  }
+
+  if (ident.osabi != 0) {
+    puts("non-System V ELF binaries are not implemented");
+    exit(1);
+  }
+
+  // Depending on 32-bit or 64-bit
+  // read out the rest of the header
+
+
+  if (fp) {
+    fclose(fp);
+  }
+}
+
+int main(int argc, char *argv[]) {
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s [options] [64ELFbinary]...\n", argv[0]);
+    fprintf(stderr, "\t-p Only parse the ELF header\n");
+    return 1;
+  }
+
+  bool parse_elf_only = false;
+
+  for (int i = 1; i < argc; i++) {
+    if (argv[i][0] == '-' && argv[i][1] == 'p') {
+      parse_elf_only = true;
+    }
+  }
+
+  if (parse_elf_only) {
+    for (int i = 1; i < argc; i++) {
+      if (strcmp("-p", argv[i]) == 0) {
+        continue;
+      }
+      printf("Parsing file: %s\n", argv[i]);
+      parse_elf_header(argv[i]);
+    }
+    return 0;
+  }
+
+  for (int i = 1; i < argc; i++) {
     fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
     popularity_contest(argv[i]);
     fflush(stdout);
