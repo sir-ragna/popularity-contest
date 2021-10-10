@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 typedef struct {
     // unsigned short NMD_X86_INSTRUCTION;
@@ -11,31 +12,35 @@ typedef struct {
     char instr_str[32]; // store mnemonic
 } InstructionCounter;
 
-void popularity_contest(const char *filename) {
-    FILE *fp = fopen(filename, "r");
+/* Returns a non-zero value on failure */
+int popularity_contest(const char *filename) {
+  
+  FILE *fp = fopen(filename, "r");
   if (!fp) {
     perror("fopen");
-    exit(1);
+    return 1;
   }
 
   Elf64_Ehdr elfHeader;
   size_t ret = fread(&elfHeader, sizeof(elfHeader), 1, fp);
   if (ret != 1) {
     fprintf(stderr, "Line:%d fread() failed: %zu\n", __LINE__, ret);
-    exit(1);
+    return 1;
   } 
 
   // Specification
-  if (elfHeader.e_ident[0] == 0x7f && 
-      elfHeader.e_ident[1] == 0x45 && // E
-      elfHeader.e_ident[2] == 0x4c && // L
-      elfHeader.e_ident[3] == 0x46)   // F
-  { 
-    //puts("This is an ELF file\n");
-  } else {
+  if (elfHeader.e_ident[0] != 0x7f || 
+      elfHeader.e_ident[1] != 0x45 || // E
+      elfHeader.e_ident[2] != 0x4c || // L
+      elfHeader.e_ident[3] != 0x46)   // F
+  {
     puts("This is not an ELF file\n");
-    exit(4);
+    return 4;
   }
+
+  printf("e_type: %d\n", elfHeader.e_type);
+  return 0;
+  //if (elfHeader.e_type)
 
   // printf("Entrypoint %08x %lu\n", (unsigned int)elfHeader.e_entry, elfHeader.e_entry);
   // printf("Program header offset %08x %lu\n", (unsigned int)elfHeader.e_phoff, elfHeader.e_phoff);
@@ -49,12 +54,14 @@ void popularity_contest(const char *filename) {
   rewind(fp); // next read instruction, start from the beginning
   clearerr(fp); // clear feof()
 
+  assert(elfHeader.e_shentsize == sizeof(Elf64_Shdr));
+
   // e_shoff header offset
   // e_shnum aantal headers
   // find the section headers and load them into Elf64_Shdr structs
   Elf64_Shdr *section_headers;
   section_headers = malloc(sizeof(Elf64_Shdr) * elfHeader.e_shnum); 
-
+  
   // printf("Total file size: %d\n", amount_bytes);
   // printf("Section Header Offset: %zu\n", elfHeader.e_shoff);
   // printf("Section header size: %d\n", elfHeader.e_shentsize);
@@ -62,33 +69,33 @@ void popularity_contest(const char *filename) {
   ret = fseek(fp, elfHeader.e_shoff, SEEK_SET); 
   if (ret == -1) {
     fprintf(stderr, "Line:%d fseek() failed: %zu\n", __LINE__, ret);
-    exit(1);
+    return 1;
   }
 
   char *section_string_table;
 
   for (int i = 0; i < elfHeader.e_shnum; i++) {
-
+    
     // Read out Section Header from file
     ret = fread(section_headers + i, elfHeader.e_shentsize, 1, fp);
     if (ret != 1) {
       fprintf(stderr, "Line:%d fread() failed: %zu\n", __LINE__, ret);
       fprintf(stderr, "eof value: %d\n", feof(fp));
       fprintf(stderr, "ferror value: %d\n", ferror(fp));
-      exit(1);
+      return 1;
     }
     
     // Print the properties of the Section Header
-    // printf("%i Str offset: %i, Type: %i, offset: %lu (%#lx), Size: %lu (%#lx)\n",
-    //   i, section_headers[i].sh_name, section_headers[i].sh_type,
-    //   section_headers[i].sh_offset, section_headers[i].sh_offset,
-    //   section_headers[i].sh_size, section_headers[i].sh_size);
+    printf("%i Str offset: %i, Type: %i, offset: %lu (%#lx), Size: %lu (%#lx)\n",
+      i, section_headers[i].sh_name, section_headers[i].sh_type,
+      section_headers[i].sh_offset, section_headers[i].sh_offset,
+      section_headers[i].sh_size, section_headers[i].sh_size);
 
     if (i == elfHeader.e_shstrndx) { // This is the _Section Header String Table_
       ret = fseek(fp, section_headers[i].sh_offset, SEEK_SET); // set cursor
       if (ret == -1) {
         fprintf(stderr, "Line:%d fseek() failed: %zu\n", __LINE__, ret);
-        exit(1);
+        return 1;
       }
       section_string_table = malloc(section_headers[i].sh_size); // allocate memory
       ret = fread(section_string_table, section_headers[i].sh_size, 1, fp); 
@@ -96,23 +103,9 @@ void popularity_contest(const char *filename) {
         fprintf(stderr, "Line:%d fread() failed: %zu\n", __LINE__, ret);
         fprintf(stderr, "eof value: %d\n", feof(fp));
         fprintf(stderr, "ferror value: %d\n", ferror(fp));
-        exit(1);
+        return 1;
       }
     }
-    // if (section_headers[i].sh_type == SHT_PROGBITS) {
-    //   // .text, .rodata, ....
-    //   if (section_headers[i].sh_flags & SHF_EXECINSTR && // execute bit set
-    //       section_headers[i].sh_flags & SHF_ALLOC)       // alloc bit set
-    //   {
-    //     // only .text ?
-    //     puts("Executable program bits, so maybe code is here?");
-    //   }
-    // }
-
-    // if (section_headers[i].sh_type == SHT_STRTAB) {
-    //   // String table, With this we can find the actual names
-    //   puts("String table is here\n");
-    // }
   }
 
   unsigned char *buffer;
@@ -120,20 +113,28 @@ void popularity_contest(const char *filename) {
   size_t buffer_size = 0;
 
   for (int i = 0; i < elfHeader.e_shnum; i++) {
-    if (section_headers[i].sh_size == 0) {
+    if (section_headers[i].sh_size == 0 // Not interested in pieces that are zero-size
+     || section_headers[i].sh_type != SHT_PROGBITS) // issues with /bin/go
+    {
       continue;
     }
     // section_headers[i].sh_name // index in section header str table
+    printf("%p + section_headers.name(%d)\n", section_string_table, section_headers[i].sh_name);
     char* str = section_string_table + section_headers[i].sh_name;
-    // puts(str); // print section name
-    if (strcmp(".text", str) == 0) {
+    puts(str); // print section name
+    fflush(stdout);
+    if (*str == '.' &&
+        *(str+1) == 't' &&
+        str[2] == 'e' &&
+        str[3] == 'x' &&
+        str[4] == 't') {
       // This is the piece we want to disassemble
       
       // set cursor
       ret = fseek(fp, section_headers[i].sh_offset, SEEK_SET); 
       if (ret == -1) {
         fprintf(stderr, "Line:%d fseek() failed: %zu\n", __LINE__, ret);
-        exit(1);
+        return 1;
       }
 
       // allocate necessary memory
@@ -147,7 +148,7 @@ void popularity_contest(const char *filename) {
         fprintf(stderr, "Line:%d fread() failed: %zu\n", __LINE__, ret);
         fprintf(stderr, "eof value: %d\n", feof(fp));
         fprintf(stderr, "ferror value: %d\n", ferror(fp));
-        exit(1);
+        return 1;
       }
     }
   }
@@ -222,12 +223,14 @@ void popularity_contest(const char *filename) {
   if (buffer != NULL) {
     free(buffer);
   }
+
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     fprintf(stderr, "Usage: %s [64ELFbinary]...\n", argv[0]);
-    exit(1);
+    return 1;
   }
   for (int i = 1; i < argc; i++ ) {
     fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
