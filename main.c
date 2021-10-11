@@ -375,13 +375,14 @@ int parse_64_bit_header(FILE *fp) {
   if (elfheader.e_ehsize != 64) {
     // I don't know in which situation this isn't 64.
     puts("Abnormal ELF Header size for 64-bit");
-    exit(2);
+    exit(2); /* Exit because I don't know how I'm going to handle this */
   }
 
   printf("Section header table entry count: %i\n", elfheader.e_shnum);
   printf("Section header string table index: %i\n", elfheader.e_shstrndx);
   
-  printf("Section header size: %d(fixed)\n", elfheader.e_shentsize);
+  /* This should be a fixed size, so maybe don't print it? */
+  // printf("Section header size: %d(fixed)\n", elfheader.e_shentsize);
 
   if (elfheader.e_shentsize != sizeof(Elf64_sectionheader)) {
     /* This might be a header issue or my the code */
@@ -468,8 +469,41 @@ int parse_64_bit_header(FILE *fp) {
     case 17:
       puts("\tType: Section group");
       break;
+    case 18:
+      puts("\tType: Extended section indices");
+      break;
+    case 19:
+      puts("\tType: Number of defined types");
+      break;
+    case 0x60000000:
+      puts("\tType: Start OS-specific");
+      break;
+    case 0x6ffffff5:
+      puts("\tType: Object attributes");
+      break;  
+    case 0x6ffffff6:
+      puts("\tType: GNU-style Hash table");
+      break;
+    case 0x6ffffff7:
+      puts("\tType: Prelink libary list");
+      break;  
+    case 0x6ffffff8:
+      puts("\tType: Checksum for DSO content");
+      break;
+    case 0x6ffffffa:
+      puts("\tType: Sun-specific low bound");
+      break;
+    case 0x6ffffffd:
+      puts("\tType: Version definition section");
+      break;
+    case 0x6ffffffe:
+      puts("\tType: Version needs section");
+      break;
+    case 0x6fffffff:
+      puts("\tType: Version symbol table(GNU symver)");
+      break;
     default:
-      puts("\tType is UKNOWN");
+      puts("\tType is UNKNOWN");
       break;
     }
     printf("\tFlags: %d\n", sh.sh_flags);
