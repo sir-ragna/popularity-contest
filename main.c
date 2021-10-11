@@ -414,10 +414,31 @@ int parse_64_bit_header(FILE *fp) {
     }
   }
 
+  /* Look up the [section header string table]-section */
+  uint64_t sh_str_tbl_size = section_headers[elfheader.e_shstrndx].sh_size;
+  uint64_t sh_str_tbl_offset = section_headers[elfheader.e_shstrndx].sh_offset;
+  char *sh_string_table; // Hold the names of all the sections
+  sh_string_table = malloc(sh_str_tbl_size);
+  if (fseek(fp, sh_str_tbl_offset, SEEK_SET) == -1) { /* set cursor at offset */
+    perror("fseek");
+    free(section_headers);
+    free(sh_string_table);
+    return 1;
+  }
+  if (fread(sh_string_table, sh_str_tbl_size, 1, fp) != 1) {
+    perror("fread");
+    free(section_headers);
+    free(sh_string_table);
+    return 1;
+  }
+
   /* Print ouf the section headers one by one */
   for (int i = 0; i < elfheader.e_shnum; i++) {
     Elf64_sectionheader sh = section_headers[i];
-    printf("%d --- tbl index %d\n", i, sh.sh_name);
+
+    /* Look up the section name in the string table */
+    char *section_name = sh_string_table + section_headers[i].sh_name;
+    printf("%d --- Section: %s (index: %d)\n", i, section_name, sh.sh_name);
     printf("\tType code: %d\n", sh.sh_type);
     switch (sh.sh_type)
     {
@@ -532,6 +553,9 @@ int parse_64_bit_header(FILE *fp) {
     puts("******************************");
   }
 
+  if (sh_string_table) {
+    free(sh_string_table);
+  }
   if (section_headers) {
     free(section_headers);
   }
