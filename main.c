@@ -104,8 +104,112 @@ typedef struct
 typedef struct {
     unsigned int counter; // count occurences
     char instr_str[32]; // store mnemonic
-} InstructionCounter;
+} Instruction_counters;
 
+Instruction_counters* count_instructions_64bit(unsigned char* text){
+  return NULL;
+}
+
+unsigned char* get_text_section(FILE *fp) {
+  Elf64_header elfheader;
+  if (fseek(fp, 0, SEEK_SET) != 0) {
+    perror("fseek");
+    return NULL;
+  }
+
+  if (fread(&elfheader, sizeof(elfheader), 1, fp) != 1) {
+    perror("fread");
+    return NULL;
+  }
+
+  if (elfheader.e_ehsize != 64) {
+    fprintf(stderr, "64-bit ELF file reports an abnormal header size (%d)\n", elfheader.e_ehsize);
+    return NULL;
+  }
+
+  if (elfheader.e_shentsize != sizeof(Elf64_sectionheader)) {
+    fprintf(stderr, "Reported ELF section header size is wrong (%d)\n", elfheader.e_shentsize);
+    return NULL;
+  }
+
+  if (-1 == fseek(fp, elfheader.e_shoff, SEEK_SET)) {
+      fprintf(stderr, "fseek failed (eof=%d)\n", feof(fp));
+      return NULL;
+  }
+
+  Elf64_sectionheader *section_headers;
+  section_headers = (Elf64_sectionheader *)malloc(sizeof(Elf64_sectionheader) * elfheader.e_shnum);
+
+  /* Read out the section headers */
+  for (int i = 0; i < elfheader.e_shnum; i++) {
+    int ret = fread(section_headers + i, sizeof(Elf64_sectionheader), 1, fp);
+    if (ret != 1) {
+      fprintf(stderr, "eof value: %d\n", feof(fp));
+      fprintf(stderr, "ferror value: %d\n", ferror(fp));
+      perror("fread");
+
+      free(section_headers); /* cleanup */
+      return NULL;
+    }
+  }
+
+  /* Look up the [section header string table]-section */
+  uint64_t sh_str_tbl_size = section_headers[elfheader.e_shstrndx].sh_size;
+  uint64_t sh_str_tbl_offset = section_headers[elfheader.e_shstrndx].sh_offset;
+  char *sh_string_table; // Hold the names of all the sections
+  sh_string_table = (char *) malloc(sh_str_tbl_size);
+  if (fseek(fp, sh_str_tbl_offset, SEEK_SET) == -1) { /* set cursor at offset */
+    perror("fseek");
+    free(section_headers);
+    free(sh_string_table);
+    return NULL;
+  }
+  /* actual read of section header  */
+  if (fread(sh_string_table, sh_str_tbl_size, 1, fp) != 1) { 
+    perror("fread");
+    free(section_headers);
+    free(sh_string_table);
+    return NULL;
+  }
+
+  /* find the .text section header */
+  for (int i = 0; i < elfheader.e_shnum; i++)
+  {
+    Elf64_sectionheader current_sh = section_headers[i];
+    if (current_sh.sh_type == 1 && /* Check if Program Info bits */
+      strcmp(".text", (sh_string_table + current_sh.sh_name)) == 0) {
+      /* Check if the section name is '.text' */
+      printf("\tSection file offset: %ld\n", current_sh.sh_offset);
+      printf("\tSection size: %ld\n", current_sh.sh_size);
+      if (fseek(fp, current_sh.sh_offset, SEEK_SET) == -1) { /* set cursor at offset */
+        perror("fseek");
+        free(section_headers);
+        free(sh_string_table);
+        return NULL;
+      }
+
+      /* Allocate required memory for .text section */
+      unsigned char* text_section = (unsigned char *)malloc(current_sh.sh_size);
+
+      /* reading in the .text section */
+      if (fread(text_section, current_sh.sh_size, 1, fp) != 1) { 
+        perror("fread");
+        free(section_headers);
+        free(sh_string_table);
+        return NULL;
+      }
+
+      free(section_headers);
+      free(sh_string_table);
+      return text_section;
+    }
+  }
+  
+  fprintf(stderr, ".text section not found in section headers\n");
+  free(section_headers);
+  free(sh_string_table);
+  return NULL;
+}
 
 /* Returns a non-zero value on failure */
 int popularity_contest(const char *filename) {
@@ -132,15 +236,28 @@ int popularity_contest(const char *filename) {
     return 4;
   }
 
-  if (ident.data == 2) {
-    // 64-bit
+  if (ident.data != 1) {
+    fprintf(stderr, "Only little endian is supported (reported=%d)\n", ident.data);
+    return 6;
+  }
 
-  } else if (ident.data == 1) {
+  if (ident.class == 2) {
+    // 64-bit
+    // read out the .text section
+    unsigned char* text_section = get_text_section(fp);
+    if (text_section) {
+      free(text_section);
+    }
+    // result = count_instructions_64bit()
+    // aggregate the results
+    // write output somewhere
+
+  } else if (ident.class == 1) {
     // 32-bit
     // TODO
   } else {
     // WTF?
-    fprintf(stderr, "Unknown data bits: %d\n", ident.data);
+    fprintf(stderr, "Unknown class bits: %d\n", ident.class);
     return 5;
   }
 
@@ -436,9 +553,8 @@ int parse_64_bit_header(FILE *fp) {
       fprintf(stderr, "eof value: %d\n", feof(fp));
       fprintf(stderr, "ferror value: %d\n", ferror(fp));
       perror("fread");
-      if (section_headers) {
-        free(section_headers);
-      }
+
+      free(section_headers);
       return 1;
     }
   }
