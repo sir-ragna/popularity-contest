@@ -102,40 +102,95 @@ typedef struct
 } Elf64_sectionheader;
 
 typedef struct {
+    uint8_t * data;
+    size_t datalen;
+} Section_data;
+
+typedef struct {
     unsigned int counter; // count occurences
     char instr_str[32];   // store mnemonic
+} Instruction_counter;
+
+typedef struct {
+    Instruction_counter counter[1508];
+    /* The 1508 comes from nmd_assembly.h, I took the last enum 
+     * NMD_X86_INSTRUCTION and took the last value and added one.
+     * printf("highest instruction enum: %d\n", NMD_X86_INSTRUCTION_ENDBR64);
+     * See nmd_assembly.h */
 } Instruction_counters;
 
-Instruction_counters* count_instructions_64bit(unsigned char* text){
+Instruction_counters* count_instructions_64bit(Section_data text) {
+    /* Allocate counters and zero initialize */
+    Instruction_counters *ics = NULL;
+    ics = (Instruction_counters *)malloc(sizeof(Instruction_counters));
+    memset(ics, 0, sizeof(Instruction_counters));
+
+    nmd_x86_instruction instruction;
+    memset(&instruction, 0, sizeof(instruction)); /* zero initialize */
+	char formatted_instruction[128];
+
+    uint8_t* data_end = text.data + text.datalen;
+    for (size_t i = 0; i < text.datalen; i += instruction.length) {
+        /* Consider changing NMD_X86_DECODER_FLAGS_ALL
+         * maybe we can speed things up by not decoding everything. */
+        if (!nmd_x86_decode(text.data + i, (size_t)data_end - (text.datalen + i), &instruction, NMD_X86_MODE_64, NMD_X86_DECODER_FLAGS_ALL)) {
+            break; /* failed to decode */
+            /* TODO error stuff? Clean up and return NULL?  */
+        }
+        nmd_x86_format(&instruction, formatted_instruction, NMD_X86_INVALID_RUNTIME_ADDRESS, NMD_X86_FORMAT_FLAGS_HEX);
+        /* might have to switch back to NMD_X86_FORMAT_FLAGS_DEFAULT */
+        
+        //printf("%s\n", formatted_instruction); // print as test
+
+        // copy the first 32 (or till the first space) bytes into instr_str
+        for (unsigned char k = 0; k < 32    // max of 32 bytes
+            && formatted_instruction[k] != ' ' // don't do spaces
+            && formatted_instruction[k] != '\0' // stop at end of str
+            ; k++) 
+        {
+            ics->counter[instruction.id].instr_str[k] = formatted_instruction[k];
+        }
+        ics->counter[instruction.id].counter++; // increment counter 
+    }
+
+    // TODO sort the results
+    // TODO return the results
+
+    
+    free(ics);
     return NULL;
 }
 
-/* returns NULL on failure */
-unsigned char* get_text_section(FILE *fp) {
+/* returns Section_data.data == NULL on failure */
+Section_data get_text_section(FILE *fp) {
     Elf64_header elfheader;
+    
+    /* Zero initialize, the alternative is memset() */
+    Section_data text_data = { .data = NULL, .datalen = 0 }; 
+    
     if (fseek(fp, 0, SEEK_SET) != 0) {
         perror("fseek");
-        return NULL;
+        return text_data;
     }
 
     if (fread(&elfheader, sizeof(elfheader), 1, fp) != 1) {
         perror("fread");
-        return NULL;
+        return text_data;
     }
 
     if (elfheader.e_ehsize != 64) {
         fprintf(stderr, "64-bit ELF file reports an abnormal header size (%d)\n", elfheader.e_ehsize);
-        return NULL;
+        return text_data;
     }
 
     if (elfheader.e_shentsize != sizeof(Elf64_sectionheader)) {
         fprintf(stderr, "Reported ELF section header size is wrong (%d)\n", elfheader.e_shentsize);
-        return NULL;
+        return text_data;
     }
 
     if (-1 == fseek(fp, elfheader.e_shoff, SEEK_SET)) {
-            fprintf(stderr, "fseek failed (eof=%d)\n", feof(fp));
-            return NULL;
+        fprintf(stderr, "fseek failed (eof=%d)\n", feof(fp));
+        return text_data;
     }
 
     Elf64_sectionheader *section_headers;
@@ -150,7 +205,7 @@ unsigned char* get_text_section(FILE *fp) {
             perror("fread");
 
             free(section_headers); /* cleanup */
-            return NULL;
+            return text_data;
         }
     }
 
@@ -163,14 +218,14 @@ unsigned char* get_text_section(FILE *fp) {
         perror("fseek");
         free(section_headers);
         free(sh_string_table);
-        return NULL;
+        return text_data;
     }
     /* actual read of section header    */
     if (fread(sh_string_table, sh_str_tbl_size, 1, fp) != 1) { 
         perror("fread");
         free(section_headers);
         free(sh_string_table);
-        return NULL;
+        return text_data;
     }
 
     /* find the .text section header */
@@ -186,7 +241,7 @@ unsigned char* get_text_section(FILE *fp) {
                 perror("fseek");
                 free(section_headers);
                 free(sh_string_table);
-                return NULL;
+                return text_data;
             }
 
             /* Allocate required memory for .text section */
@@ -198,19 +253,22 @@ unsigned char* get_text_section(FILE *fp) {
                 free(section_headers);
                 free(sh_string_table);
                 free(text_section);
-                return NULL;
+                return text_data;
             }
+
+            text_data.data = text_section;
+            text_data.datalen = current_sh.sh_size;
 
             free(section_headers);
             free(sh_string_table);
-            return text_section; /* SUCCESS */
+            return text_data; /* SUCCESS */
         }
     }
     
     fprintf(stderr, ".text section not found in section headers\n");
     free(section_headers);
     free(sh_string_table);
-    return NULL;
+    return text_data;
 }
 
 /* Returns a non-zero value on failure */
@@ -246,13 +304,20 @@ int count_instructions_in_file(const char *filename) {
     if (ident.class == 2) {
         // 64-bit
         // read out the .text section
-        unsigned char* text_section = get_text_section(fp);
-        if (text_section) {
-            free(text_section);
+        Section_data text_section = get_text_section(fp);
+        if (text_section.data == NULL) {
+            /* FAILED, what now? */
+            fclose(fp);
+            return 7;
         }
+
+        count_instructions_64bit(text_section);
         // result = count_instructions_64bit()
-        // aggregate the results
-        // write output somewhere
+        // aggregate the results (maybe not here but in main func)
+        //    \-->write output somewhere
+        
+        // cleanup
+        free(text_section.data);
 
     } else if (ident.class == 1) {
         // 32-bit
@@ -398,16 +463,7 @@ int count_instructions_in_file(const char *filename) {
 
 	//     // printf("%s\n", formatted_instruction);
 
-    //     // copy the first 32 (or till the first space) bytes into instr_str
-    //     for (unsigned char k = 0; k < 32    // max of 32 bytes
-    //         && formatted_instruction[k] != ' ' // don't do spaces
-    //         && formatted_instruction[k] != '\0' // stop at end of str
-    //         ; k++) 
-    //     {
-    //         instruction_counters[instruction.id].instr_str[k] = formatted_instruction[k];
-    //     }
-    //     instruction_counters[instruction.id].counter++; // increment counter 
-	// }
+
 
     // // sort the results
     // bool swapped_value = false; // check if a value was swapped in the last run
@@ -467,6 +523,8 @@ int count_instructions_in_file(const char *filename) {
     // buffer = NULL;
 
     // return 1; // Exit with error
+
+    fclose(fp);
 }
 
 /* Returns a non-zero value on failure */
