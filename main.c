@@ -395,9 +395,9 @@ int parse_64_bit_header(FILE *fp) {
     exit(1);
   }
 
-  printf("Entrypoint: %#016x\n", elfheader.e_entry);
-  printf("Program header table offset: %d\n", elfheader.e_phoff);
-  printf("Section header table offset: %d\n", elfheader.e_shoff);
+  printf("Entrypoint: %#016lx\n", elfheader.e_entry);
+  printf("Program header table offset: %ld\n", elfheader.e_phoff);
+  printf("Section header table offset: %ld\n", elfheader.e_shoff);
   printf("Flags: %#08x\n", elfheader.e_flags);
   printf("ELF Header size: %#04x (%i bytes)\n", elfheader.e_ehsize, elfheader.e_ehsize);
 
@@ -427,7 +427,7 @@ int parse_64_bit_header(FILE *fp) {
 
   /* Allocate the required memory */
   Elf64_sectionheader *section_headers;
-  section_headers = malloc(sizeof(Elf64_sectionheader) * elfheader.e_shnum);
+  section_headers = (Elf64_sectionheader *)malloc(sizeof(Elf64_sectionheader) * elfheader.e_shnum);
 
   /* Read out the section headers */
   for (int i = 0; i < elfheader.e_shnum; i++) {
@@ -447,7 +447,7 @@ int parse_64_bit_header(FILE *fp) {
   uint64_t sh_str_tbl_size = section_headers[elfheader.e_shstrndx].sh_size;
   uint64_t sh_str_tbl_offset = section_headers[elfheader.e_shstrndx].sh_offset;
   char *sh_string_table; // Hold the names of all the sections
-  sh_string_table = malloc(sh_str_tbl_size);
+  sh_string_table = (char *) malloc(sh_str_tbl_size);
   if (fseek(fp, sh_str_tbl_offset, SEEK_SET) == -1) { /* set cursor at offset */
     perror("fseek");
     free(section_headers);
@@ -556,7 +556,7 @@ int parse_64_bit_header(FILE *fp) {
       puts("\tType is UNKNOWN");
       break;
     }
-    printf("\tFlags: %d\n", sh.sh_flags);
+    printf("\tFlags: %ld\n", sh.sh_flags);
     if (sh.sh_flags & 0x1) {
       puts("\t\tWriteable section");
     }
@@ -572,13 +572,13 @@ int parse_64_bit_header(FILE *fp) {
     if (sh.sh_flags & 0x16) {
       puts("\t\tContains nul-terminated strings");
     }
-    printf("\tVirtual Address: %#016x\n", sh.sh_addr);
-    printf("\tSection file offset: %d\n", sh.sh_offset);
-    printf("\tSection size: %d\n", sh.sh_size);
+    printf("\tVirtual Address: %#016lx\n", sh.sh_addr);
+    printf("\tSection file offset: %ld\n", sh.sh_offset);
+    printf("\tSection size: %ld\n", sh.sh_size);
     printf("\tLink: %#08x\n", sh.sh_link); /* What is Link? */
     printf("\tInfo: %#08x\n", sh.sh_info);
-    printf("\tSection alignment: %#016x\n", sh.sh_addralign);
-    printf("\tEntry size: %d\n", sh.sh_entsize);
+    printf("\tSection alignment: %#016lx\n", sh.sh_addralign);
+    printf("\tEntry size: %ld\n", sh.sh_entsize);
     puts("******************************");
   }
 
