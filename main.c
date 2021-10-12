@@ -110,6 +110,7 @@ Instruction_counters* count_instructions_64bit(unsigned char* text){
   return NULL;
 }
 
+/* returns NULL on failure */
 unsigned char* get_text_section(FILE *fp) {
   Elf64_header elfheader;
   if (fseek(fp, 0, SEEK_SET) != 0) {
@@ -196,12 +197,13 @@ unsigned char* get_text_section(FILE *fp) {
         perror("fread");
         free(section_headers);
         free(sh_string_table);
+        free(text_section);
         return NULL;
       }
 
       free(section_headers);
       free(sh_string_table);
-      return text_section;
+      return text_section; /* SUCCESS */
     }
   }
   
@@ -212,7 +214,7 @@ unsigned char* get_text_section(FILE *fp) {
 }
 
 /* Returns a non-zero value on failure */
-int popularity_contest(const char *filename) {
+int count_instructions_in_file(const char *filename) {
   
   FILE *fp = fopen(filename, "r");
   if (!fp) {
@@ -823,7 +825,7 @@ int main(int argc, char *argv[]) {
 
   for (int i = 1; i < argc; i++) {
     fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
-    popularity_contest(argv[i]);
+    count_instructions_in_file(argv[i]);
     fflush(stdout);
     fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
     fprintf(stderr, "%s\n", "--------------------------------------------------------------------------------");
