@@ -325,6 +325,7 @@ int count_instructions_in_file(const char *filename) {
         
         // cleanup
         free(text_section.data);
+        free(ics);
 
     } else if (ident.class == 1) {
         // 32-bit
