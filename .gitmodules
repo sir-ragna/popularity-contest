@@ -1,0 +1,3 @@
+[submodule "nmd"]
+	path = nmd
+	url = git@github.com:Nomade040/nmd.git

@@ -1,6 +1,6 @@
 #define NMD_ASSEMBLY_IMPLEMENTATION
-#include "nmd_assembly.h" // from https://github.com/Nomade040/nmd
-//#include "elf.h" // copy from /usr/include/elf.h from my own machine
+#include "nmd/nmd_assembly.h" // from https://github.com/Nomade040/nmd
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
