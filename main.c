@@ -11,7 +11,7 @@
 typedef struct 
 {
     uint8_t magic[4];   /* 0x7F, 'E', 'L', 'F' */
-    uint8_t elfclass;      /* 1 = 32-bit
+    uint8_t elfclass;   /* 1 = 32-bit
                          * 2 = 64-bit */
     uint8_t data;       /* 1 = little-endian 
                          * 2 = big-endian    */
@@ -30,75 +30,75 @@ typedef struct
 
 typedef struct
 {
-    Ident	ident;
-    uint16_t e_type;		/* Object file type 
-                             * 1 = Relocatable file
-                             * 2 = Executable file 
-                             * 3 = Shared object file
-                             * (Not interested in the rest ATM */
-    uint16_t	e_machine;  /* Machine
-                             * 62 = AMD x86-64
-                             * 3 = Intel 80386
-                             */
-    uint32_t	e_version;	/* ELF Version (again) set to 1 */
-    uint32_t	e_entry;	/* Entry point virtual address */
-    uint32_t	e_phoff;	/* Program header table file offset */
-    uint32_t	e_shoff;	/* Section header table file offset */
-    uint32_t	e_flags;	/* Processor-specific flags */
-    uint16_t	e_ehsize;	/* ELF header size in bytes. 
-                             * 52 Bytes for 32-bit    */
-    uint16_t	e_phentsize;/* Program header table entry size */
-    uint16_t	e_phnum;	/* Program header table entry count */
-    uint16_t	e_shentsize;/* Section header table entry size */
-    uint16_t	e_shnum;	/* Section header table entry count */
-    uint16_t	e_shstrndx;	/* Section header string table index */
+    Ident    ident;
+    uint16_t e_type;    /* Object file type 
+                         * 1 = Relocatable file
+                         * 2 = Executable file 
+                         * 3 = Shared object file
+                         * (Not interested in the rest ATM */
+    uint16_t e_machine; /* Machine
+                         * 62 = AMD x86-64
+                         * 3 = Intel 80386
+                         */
+    uint32_t e_version; /* ELF Version (again) set to 1 */
+    uint32_t e_entry;   /* Entry point virtual address */
+    uint32_t e_phoff;   /* Program header table file offset */
+    uint32_t e_shoff;   /* Section header table file offset */
+    uint32_t e_flags;   /* Processor-specific flags */
+    uint16_t e_ehsize;  /* ELF header size in bytes. 
+                         * 52 Bytes for 32-bit    */
+    uint16_t e_phentsize;/* Program header table entry size */
+    uint16_t e_phnum;    /* Program header table entry count */
+    uint16_t e_shentsize;/* Section header table entry size */
+    uint16_t e_shnum;    /* Section header table entry count */
+    uint16_t e_shstrndx; /* Section header string table index */
 } Elf32_header;
 
 typedef struct
 {
-    Ident	ident;
-    uint16_t e_type;		    
-    uint16_t	e_machine;		
-    uint32_t	e_version;    /* Object file version */
-    uint64_t	e_entry;      /* Entry point virtual address */
-    uint64_t	e_phoff;      /* Program header table file offset */
-    uint64_t	e_shoff;      /* Section header table file offset */
-    uint32_t	e_flags;      /* Processor-specific flags */
-    uint16_t	e_ehsize;     /* ELF header size in bytes 
-                               * 64 Bytes for 64-bit */
-    uint16_t	e_phentsize;  /* Program header table entry size */
-    uint16_t	e_phnum;      /* Program header table entry count */
-    uint16_t	e_shentsize;  /* Section header table entry size */
-    uint16_t	e_shnum;      /* Section header table entry count */
-    uint16_t	e_shstrndx;   /* Section header string table index */
+    Ident    ident;
+    uint16_t e_type;    
+    uint16_t e_machine;
+    uint32_t e_version;    /* Object file version */
+    uint64_t e_entry;      /* Entry point virtual address */
+    uint64_t e_phoff;      /* Program header table file offset */
+    uint64_t e_shoff;      /* Section header table file offset */
+    uint32_t e_flags;      /* Processor-specific flags */
+    uint16_t e_ehsize;     /* ELF header size in bytes 
+                            * 64 Bytes for 64-bit */
+    uint16_t e_phentsize;  /* Program header table entry size */
+    uint16_t e_phnum;      /* Program header table entry count */
+    uint16_t e_shentsize;  /* Section header table entry size */
+    uint16_t e_shnum;      /* Section header table entry count */
+    uint16_t e_shstrndx;   /* Section header string table index */
 } Elf64_header;
 
 typedef struct
 {
-    uint32_t	sh_name;       /* Section name (string tbl index) */
-    uint32_t	sh_type;       /* Section type */
-    uint32_t	sh_flags;      /* Section flags */
-    uint32_t	sh_addr;       /* Section virtual addr at execution */
-    uint32_t	sh_offset;     /* Section file offset */
-    uint32_t	sh_size;       /* Section size in bytes */
-    uint32_t	sh_link;       /* Link to another section */
-    uint32_t	sh_info;       /* Additional section information */
-    uint32_t	sh_addralign;  /* Section alignment */
-    uint32_t	sh_entsize;    /* Entry size if section holds table */
+    uint32_t sh_name;       /* Section name (string tbl index) */
+    uint32_t sh_type;       /* Section type */
+    uint32_t sh_flags;      /* Section flags */
+    uint32_t sh_addr;       /* Section virtual addr at execution */
+    uint32_t sh_offset;     /* Section file offset */
+    uint32_t sh_size;       /* Section size in bytes */
+    uint32_t sh_link;       /* Link to another section */
+    uint32_t sh_info;       /* Additional section information */
+    uint32_t sh_addralign;  /* Section alignment */
+    uint32_t sh_entsize;    /* Entry size if section holds table */
 } Elf32_sectionheader;
 
 typedef struct
 {
-    uint32_t	sh_name;       /* Section name (string tbl index) */
-    uint32_t	sh_type;       /* Section type */
-    uint64_t	sh_flags;      /* Section flags */
-    uint64_t	sh_addr;       /* Section virtual addr at execution */
-    uint64_t	sh_offset;     /* Section file offset */
-    uint64_t	sh_size;       /* Section size in bytes */
-    uint32_t	sh_link;       /* Link to another section */
-    uint32_t	sh_info;       /* Additional section information */
-    uint64_t	sh_addralign;  /* Section alignment */
-    uint64_t	sh_entsize;    /* Entry size if section holds table */
+    uint32_t sh_name;       /* Section name (string tbl index) */
+    uint32_t sh_type;       /* Section type */
+    uint64_t sh_flags;      /* Section flags */
+    uint64_t sh_addr;       /* Section virtual addr at execution */
+    uint64_t sh_offset;     /* Section file offset */
+    uint64_t sh_size;       /* Section size in bytes */
+    uint32_t sh_link;       /* Link to another section */
+    uint32_t sh_info;       /* Additional section information */
+    uint64_t sh_addralign;  /* Section alignment */
+    uint64_t sh_entsize;    /* Entry size if section holds table */
 } Elf64_sectionheader;
 
 typedef struct {
@@ -127,7 +127,7 @@ Instruction_counters* count_instructions_64bit(Section_data text) {
 
     nmd_x86_instruction instruction;
     memset(&instruction, 0, sizeof(instruction)); /* zero initialize */
-	char formatted_instruction[128];
+    char formatted_instruction[128];
 
     uint8_t* data_end = text.data + text.datalen;
     for (size_t i = 0; i < text.datalen; i += instruction.length) {
