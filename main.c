@@ -11,7 +11,7 @@
 typedef struct 
 {
     uint8_t magic[4];   /* 0x7F, 'E', 'L', 'F' */
-    uint8_t class;      /* 1 = 32-bit
+    uint8_t elfclass;      /* 1 = 32-bit
                          * 2 = 64-bit */
     uint8_t data;       /* 1 = little-endian 
                          * 2 = big-endian    */
@@ -295,9 +295,9 @@ int count_instructions_in_file(const char *filename) {
 
     /* Check magic bytes */
     if (ident.magic[0] != 0x7f || 
-            ident.magic[1] != 0x45 || // E
-            ident.magic[2] != 0x4c || // L
-            ident.magic[3] != 0x46)     // F
+        ident.magic[1] != 0x45 || // E
+        ident.magic[2] != 0x4c || // L
+        ident.magic[3] != 0x46)   // F
     {
         fprintf(stderr, "Not an elf file\n");
         return 4;
@@ -308,7 +308,7 @@ int count_instructions_in_file(const char *filename) {
         return 6;
     }
 
-    if (ident.class == 2) {
+    if (ident.elfclass == 2) {
         // 64-bit
         // read out the .text section
         Section_data text_section = get_text_section(fp);
@@ -327,12 +327,12 @@ int count_instructions_in_file(const char *filename) {
         free(text_section.data);
         free(ics);
 
-    } else if (ident.class == 1) {
+    } else if (ident.elfclass == 1) {
         // 32-bit
         // TODO
     } else {
         // WTF?
-        fprintf(stderr, "Unknown class bits: %d\n", ident.class);
+        fprintf(stderr, "Unknown elfclass bits: %d\n", ident.elfclass);
         return 5;
     }
 
@@ -627,10 +627,10 @@ int parse_elf_header(const char *filename) {
         return 2;
     }
 
-    if (ident.class == 1) {
-        puts("Class: 32-bit");
-    } else if (ident.class == 2) {
-        puts("Class: 64-bit");
+    if (ident.elfclass == 1) {
+        puts("elfclass: 32-bit");
+    } else if (ident.elfclass == 2) {
+        puts("elfclass: 64-bit");
     } else {
         puts("Unsupported architecture");
         return 3;
@@ -688,9 +688,9 @@ int parse_elf_header(const char *filename) {
 
     // Depending on 32-bit or 64-bit
     // read out the rest of the header
-    if (ident.class == 1) {
+    if (ident.elfclass == 1) {
         // TODO 32-bit header
-    } else if (ident.class == 2) {
+    } else if (ident.elfclass == 2) {
         parse_64_bit_header(fp);
     }
 
