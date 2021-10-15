@@ -111,18 +111,18 @@ typedef struct {
 } Instruction_counter;
 
 typedef struct {
-    Instruction_counter counter[1508];
+    Instruction_counter counters[1508];
     /* The 1508 comes from nmd_assembly.h, I took the last enum 
      * NMD_X86_INSTRUCTION and took the last value and added one.
      * printf("highest instruction enum: %d\n", NMD_X86_INSTRUCTION_ENDBR64);
      * See nmd_assembly.h */
-} Instruction_counters;
+} Counter_container;
 
-Instruction_counters* count_instructions_64bit(Section_data text) {
+Counter_container* count_instructions_64bit(Section_data text) {
     /* Allocate counters and zero initialize */
-    Instruction_counters *ics = NULL;
-    ics = (Instruction_counters *)malloc(sizeof(Instruction_counters));
-    memset(ics, 0, sizeof(Instruction_counters));
+    Counter_container *ics = NULL;
+    ics = (Counter_container *)malloc(sizeof(Counter_container));
+    memset(ics, 0, sizeof(Counter_container));
 
     nmd_x86_instruction instruction;
     memset(&instruction, 0, sizeof(instruction)); /* zero initialize */
@@ -156,10 +156,10 @@ Instruction_counters* count_instructions_64bit(Section_data text) {
             && formatted_instruction[k] != '\0' /* end of str */
             ; k++) 
         {
-            ics->counter[instruction.id].instr_str[k] = formatted_instruction[k];
+            ics->counters[instruction.id].instr_str[k] = formatted_instruction[k];
         }
         /* increment the counter for this instruction */
-        ics->counter[instruction.id].counter++;
+        ics->counters[instruction.id].counter++;
     }
 
     return ics;
@@ -278,7 +278,7 @@ Section_data get_text_section(FILE *fp) {
 }
 
 /* Returns a non-zero value on failure */
-Instruction_counters* count_instructions_in_file(const char *filename) {
+Counter_container* count_instructions_in_file(const char *filename) {
     
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -316,7 +316,7 @@ Instruction_counters* count_instructions_in_file(const char *filename) {
             return NULL;
         }
 
-        Instruction_counters* ics = count_instructions_64bit(text_section);
+        Counter_container* ics = count_instructions_64bit(text_section);
         // result = count_instructions_64bit()
         // aggregate the results (maybe not here but in main func)
         //    \-->write output somewhere
@@ -583,20 +583,20 @@ int parse_64_bit_header(FILE *fp) {
     return 0;
 }
 
-void sort_instruction_counters(Instruction_counters *ics) {
+void sort_instruction_counters(Counter_container *ics) {
     bool swapped_any_value = false;
 
-    unsigned short possible_instructions = sizeof(Instruction_counters) / sizeof(Instruction_counter);
+    unsigned short possible_instructions = sizeof(Counter_container) / sizeof(Instruction_counter);
     assert(possible_instructions == 1508);
     for (unsigned short i = 0; i < possible_instructions; i++)
     {
         for (unsigned short j = 1; j < possible_instructions; j++)
         {
             int k = j - 1; /* k is previous element */
-            if (ics->counter[j].counter > ics->counter[k].counter) {
-                Instruction_counter swap = ics->counter[j];
-                ics->counter[j] = ics->counter[k];
-                ics->counter[k] = swap;
+            if (ics->counters[j].counter > ics->counters[k].counter) {
+                Instruction_counter swap = ics->counters[j];
+                ics->counters[j] = ics->counters[k];
+                ics->counters[k] = swap;
                 swapped_any_value = true;
             }
         }
@@ -609,10 +609,10 @@ void sort_instruction_counters(Instruction_counters *ics) {
     }
 }
 
-void print_instruction_counters(Instruction_counters *ics) {
+void print_instruction_counters(Counter_container *ics) {
     for (unsigned short i = 0; i < 1508; i++) {
-        if (ics->counter[i].counter != 0) {
-            printf("%s\t%d\n", ics->counter[i].instr_str, ics->counter[i].counter);
+        if (ics->counters[i].counter != 0) {
+            printf("%s\t%d\n", ics->counters[i].instr_str, ics->counters[i].counter);
         }
     }
 }
@@ -732,7 +732,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 1; i < argc; i++) {
         fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
-        Instruction_counters *ics = count_instructions_in_file(argv[i]);
+        Counter_container *ics = count_instructions_in_file(argv[i]);
         if (ics != NULL) {
             sort_instruction_counters(ics);
             print_instruction_counters(ics);
