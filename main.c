@@ -6,8 +6,7 @@
 #include <string.h>
 #include <assert.h>
 
-/* The first 16 bytes
- * This will tell use bit-Arch, endianness, ... */
+/* The first 16 bytes. This will tell use bit-Arch, endianness, ... */
 typedef struct 
 {
     uint8_t magic[4];   /* 0x7F, 'E', 'L', 'F' */
@@ -279,18 +278,18 @@ Section_data get_text_section(FILE *fp) {
 }
 
 /* Returns a non-zero value on failure */
-int count_instructions_in_file(const char *filename) {
+Instruction_counters* count_instructions_in_file(const char *filename) {
     
     FILE *fp = fopen(filename, "r");
     if (!fp) {
         perror("fopen");
-        return 1;
+        return NULL;
     }
     
     Ident ident;
     if (fread(&ident, sizeof(Ident), 1, fp) != 1) {
         perror("fread");
-        return 2;
+        return NULL;
     }
 
     /* Check magic bytes */
@@ -300,22 +299,21 @@ int count_instructions_in_file(const char *filename) {
         ident.magic[3] != 0x46)   // F
     {
         fprintf(stderr, "Not an elf file\n");
-        return 4;
+        return NULL;
     }
 
     if (ident.data != 1) {
         fprintf(stderr, "Only little endian is supported (reported=%d)\n", ident.data);
-        return 6;
+        return NULL;
     }
 
-    if (ident.elfclass == 2) {
-        // 64-bit
-        // read out the .text section
+    if (ident.elfclass == 2) { /* 64-bit */
+
         Section_data text_section = get_text_section(fp);
         if (text_section.data == NULL) {
             /* FAILED, what now? */
             fclose(fp);
-            return 7;
+            return NULL;
         }
 
         Instruction_counters* ics = count_instructions_64bit(text_section);
@@ -323,9 +321,15 @@ int count_instructions_in_file(const char *filename) {
         // aggregate the results (maybe not here but in main func)
         //    \-->write output somewhere
         
-        // cleanup
         free(text_section.data);
-        free(ics);
+        fclose(fp);
+        
+        if (ics == NULL) {
+            fprintf(stderr, "failed to retrieve instructions from .text section\n");
+            return NULL;
+        }
+
+        return ics;     
 
     } else if (ident.elfclass == 1) {
         // 32-bit
@@ -333,42 +337,10 @@ int count_instructions_in_file(const char *filename) {
     } else {
         // WTF?
         fprintf(stderr, "Unknown elfclass bits: %d\n", ident.elfclass);
-        return 5;
     }
 
-    // // sort the results
-    // bool swapped_value = false; // check if a value was swapped in the last run
-    // for (unsigned short k = 0; k < 1508; k++) { // iterate the maximum amount of needed iterations
-    //     for (unsigned short i = 1; i < 1508; i++) {
-    //         /* Check each neighbouring value and swap them if needed */
-    //         int j = i - 1;
-    //         if (instruction_counters[i].counter > instruction_counters[j].counter) {
-    //             InstructionCounter swapval = instruction_counters[i];
-    //             instruction_counters[i] = instruction_counters[j];
-    //             instruction_counters[j] = swapval;
-    //             swapped_value = true;
-    //         }
-    //     }
-    //     if (!swapped_value) { 
-    //         /* In order to avoid having to perform more iterations than necessary
-    //         * in case that the data is already somewhat sorted, break out as soon as we have
-    //         * one iteration that doesn't require us to swap any values. */
-
-    //         //printf("Breaking the loop earlier at itteration %d\n", k);
-    //         break; // quit loop earlier if the data is sorted
-    //     }
-    //     swapped_value = false;
-    // }
-
-    // // print off all the results.
-    // for (unsigned short i = 0; i < 1508; i++) {
-    //     if (instruction_counters[i].counter != 0) {
-    //         printf("%s\t%d\n", instruction_counters[i].instr_str, instruction_counters[i].counter);
-    //     }
-    // }
-
     fclose(fp);
-    return 8;
+    return NULL;
 }
 
 /* Returns a non-zero value on failure */
@@ -611,7 +583,39 @@ int parse_64_bit_header(FILE *fp) {
     return 0;
 }
 
+void sort_instruction_counters(Instruction_counters *ics) {
+    bool swapped_any_value = false;
 
+    unsigned short possible_instructions = sizeof(Instruction_counters) / sizeof(Instruction_counter);
+    assert(possible_instructions == 1508);
+    for (unsigned short i = 0; i < possible_instructions; i++)
+    {
+        for (unsigned short j = 1; j < possible_instructions; j++)
+        {
+            int k = j - 1; /* k is previous element */
+            if (ics->counter[j].counter > ics->counter[k].counter) {
+                Instruction_counter swap = ics->counter[j];
+                ics->counter[j] = ics->counter[k];
+                ics->counter[k] = swap;
+                swapped_any_value = true;
+            }
+        }
+        if (!swapped_any_value) {
+            break; 
+            /* All values are sorted, avoid more iterations than necessary
+             * Best case scenario, we only need one iteration because
+             * the data is already sorted. */
+        }        
+    }
+}
+
+void print_instruction_counters(Instruction_counters *ics) {
+    for (unsigned short i = 0; i < 1508; i++) {
+        if (ics->counter[i].counter != 0) {
+            printf("%s\t%d\n", ics->counter[i].instr_str, ics->counter[i].counter);
+        }
+    }
+}
 
 /* Returns a non-zero value on failure */
 int parse_elf_header(const char *filename) {
@@ -728,7 +732,13 @@ int main(int argc, char *argv[]) {
 
     for (int i = 1; i < argc; i++) {
         fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
-        count_instructions_in_file(argv[i]);
+        Instruction_counters *ics = count_instructions_in_file(argv[i]);
+        if (ics != NULL) {
+            sort_instruction_counters(ics);
+            print_instruction_counters(ics);
+
+            free(ics);
+        }
         fflush(stdout);
         fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
         fprintf(stderr, "%s\n", "--------------------------------------------------------------------------------");
