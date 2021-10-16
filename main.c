@@ -617,6 +617,97 @@ void print_instruction_counters(Counter_container *ics) {
     }
 }
 
+char *join_str(const char sep, char **strlst, size_t strc)
+{
+    char * joined = NULL;
+    size_t joined_len = 512; /* Initial len */
+    size_t joined_index = 0;
+    joined = (char *)malloc(joined_len);
+    // memset(joined, 0, joined_len); /* always initialize */
+    
+    for (size_t i = 1; i < strc; i++)
+    {
+        char * str = strlst[i];
+        if (str == NULL) 
+        {
+            continue;
+        }
+        size_t len = strlen(str);
+
+        while (joined_index + len + 1 > joined_len) 
+        {
+            /* If our current string len is insufficient to hold to the
+             * total length of what we want to add, allocate more memory
+             * in increments of 512 bytes */
+            joined_len += 512;
+            joined = (char *)realloc(joined, joined_len);
+            // memset(joined + joined_len - 512, 0, 512);
+        }
+        strcpy(joined + joined_index, strlst[i]);
+
+        if (i+1 != strc) 
+        { /* We want to skip the last iteration */
+            joined[joined_index + len] = sep;
+        }
+        joined_index += len + 1;
+    }
+
+    /* guarantee that our string ends with a NULL-byte
+     * This makes the memsets unnecessary */
+    joined[joined_index] = '\0';
+
+    return joined;
+}
+
+void print_csv_table(const Counter_container *cc)
+{
+    unsigned int columns = 0;
+    /* Print headers */
+    char **col_values = NULL;
+    col_values = (char **)malloc(sizeof(void*) * 1508);
+    for (unsigned short i = 0; i < 1508; i++)
+    {
+        if (cc->counters[i].counter != 0) 
+        {
+            col_values[columns] = (char *)cc->counters[i].instr_str;
+            columns++;
+        }
+    }
+
+    char *header_str = join_str(',', col_values, columns);
+    puts(header_str);
+    free(header_str);
+
+    /* print values */
+    columns = 0;
+    for (unsigned short i = 0; i < 1508; i++)
+    {
+        if (cc->counters[i].counter != 0) 
+        {
+            /* Convert integer to ASCII 
+             * I don't like any of these: https://stackoverflow.com/questions/4629050/convert-an-int-to-ascii-character/4629161
+             */
+            char *ascii = (char *)malloc(14); 
+            /* 13 characters is enough to print hold the value
+             * 4,294,967,295 (max uint)*/
+            sprintf(ascii, "%d", cc->counters[i].counter);
+            col_values[columns] = ascii;
+            columns++;
+        }
+    }
+    char *values_str = join_str(',', col_values, columns);
+    puts(values_str);
+    free(values_str);
+
+    /* We need to free ptrs we created to store the ascii strings of the
+     * numbers. */
+    for (size_t i = 0; i < columns; i++)
+    {
+        free(col_values[i]);
+    }
+    free(col_values);    
+}
+
 /* Returns a non-zero value on failure */
 int parse_elf_header(const char *filename) {
     FILE *fp = fopen(filename, "r");
@@ -704,7 +795,8 @@ int parse_elf_header(const char *filename) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
     if (argc < 2) {
         fprintf(stderr, "Usage: %s [options] [64ELFbinary]...\n", argv[0]);
         fprintf(stderr, "\t-p Only parse the ELF header\n");
@@ -735,7 +827,8 @@ int main(int argc, char *argv[]) {
         Counter_container *ics = count_instructions_in_file(argv[i]);
         if (ics != NULL) {
             sort_instruction_counters(ics);
-            print_instruction_counters(ics);
+            //print_instruction_counters(ics);
+            print_csv_table(ics);
 
             free(ics);
         }
