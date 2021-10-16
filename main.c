@@ -605,7 +605,8 @@ void sort_instruction_counters(Counter_container *ics) {
             /* All values are sorted, avoid more iterations than necessary
              * Best case scenario, we only need one iteration because
              * the data is already sorted. */
-        }        
+        }
+        swapped_any_value = false;
     }
 }
 
