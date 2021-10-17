@@ -289,6 +289,7 @@ Counter_container* count_instructions_in_file(const char *filename) {
     Ident ident;
     if (fread(&ident, sizeof(Ident), 1, fp) != 1) {
         perror("fread");
+        fclose(fp);
         return NULL;
     }
 
@@ -299,11 +300,13 @@ Counter_container* count_instructions_in_file(const char *filename) {
         ident.magic[3] != 0x46)   // F
     {
         fprintf(stderr, "Not an elf file\n");
+        fclose(fp);
         return NULL;
     }
 
     if (ident.data != 1) {
         fprintf(stderr, "Only little endian is supported (reported=%d)\n", ident.data);
+        fclose(fp);
         return NULL;
     }
 
