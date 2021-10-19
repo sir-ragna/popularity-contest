@@ -122,7 +122,13 @@ Counter_container* count_instructions_64bit(Section_data text) {
     /* Allocate counters and zero initialize */
     Counter_container *ics = NULL;
     ics = (Counter_container *)malloc(sizeof(Counter_container));
-    memset(ics, 0, sizeof(Counter_container));
+    memset(ics, 0, sizeof(Counter_container)); /* This memset prevents
+                                                * undefined behaviour
+                                                * as a bonus, it also
+                                                * allows us to forgo
+                                                * ending the instruction
+                                                * mnemonic with a null-
+                                                * byte */
 
     nmd_x86_instruction instruction;
     memset(&instruction, 0, sizeof(instruction)); /* zero initialize */
