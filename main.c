@@ -151,7 +151,10 @@ Counter_container* count_instructions_64bit(Section_data text) {
         //printf("%s\n", formatted_instruction); // print as test
 
         /* copy the first 32 (or till the first space) bytes into instr_str */
-        for (unsigned char k = 0; k < 32        /* max of 32 bytes */
+        for (unsigned char k = 0; k < 31        /* max of 31 bytes
+                                                 * the 32th byte has to
+                                                 * remain zero so we 
+                                                 * have a cstring. */
             && formatted_instruction[k] != ' '  /* stop at the first space */
             && formatted_instruction[k] != '\0' /* end of str */
             ; k++) 
