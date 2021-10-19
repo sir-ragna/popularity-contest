@@ -118,6 +118,14 @@ typedef struct {
      * See nmd_assembly.h */
 } Counter_container;
 
+typedef char Header_row[32]; /* store 31-byte str */
+typedef unsigned int Counter_row[1508]; /* One row */
+
+typedef struct {
+    Header_row header[1508];
+    Counter_row *rows; /* list of rows */
+} CSV_data;
+
 Counter_container* count_instructions_64bit(Section_data text) {
     /* Allocate counters and zero initialize */
     Counter_container *ics = NULL;
