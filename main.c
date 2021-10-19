@@ -596,7 +596,8 @@ void sort_instruction_counters(Counter_container *ics) {
         for (unsigned short j = 1; j < possible_instructions; j++)
         {
             int k = j - 1; /* k is previous element */
-            if (ics->counters[j].counter > ics->counters[k].counter) {
+            if (ics->counters[j].counter > ics->counters[k].counter) 
+            {
                 Instruction_counter swap = ics->counters[j];
                 ics->counters[j] = ics->counters[k];
                 ics->counters[k] = swap;
@@ -658,6 +659,12 @@ char *join_str(const char sep, char **strlst, size_t strc)
 
     /* guarantee that our string ends with a NULL-byte
      * This makes the memsets unnecessary */
+    if (joined_index == joined_len)
+    {
+        /* We are one byte short to add the NULL-Byte */
+        joined_len++;
+        joined = (char *)realloc(joined, joined_len);
+    }
     joined[joined_index] = '\0';
 
     return joined;
@@ -801,7 +808,8 @@ int parse_elf_header(const char *filename) {
 
 int main(int argc, char *argv[]) 
 {
-    if (argc < 2) {
+    if (argc < 2) 
+    {
         fprintf(stderr, "Usage: %s [options] [64ELFbinary]...\n", argv[0]);
         fprintf(stderr, "\t-p Only parse the ELF header\n");
         return 1;
@@ -809,15 +817,19 @@ int main(int argc, char *argv[])
 
     bool parse_elf_only = false;
 
-    for (int i = 1; i < argc; i++) {
-        if (argv[i][0] == '-' && argv[i][1] == 'p') {
+    for (int i = 1; i < argc; i++) 
+    {
+        if (argv[i][0] == '-' && argv[i][1] == 'p') 
+        {
             parse_elf_only = true;
         }
     }
 
     if (parse_elf_only) {
-        for (int i = 1; i < argc; i++) {
-            if (strcmp("-p", argv[i]) == 0) {
+        for (int i = 1; i < argc; i++) 
+        {
+            if (strcmp("-p", argv[i]) == 0) 
+            {
                 continue;
             }
             printf("File name: %s\n", argv[i]);
@@ -826,10 +838,12 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) 
+    {
         fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
         Counter_container *ics = count_instructions_in_file(argv[i]);
-        if (ics != NULL) {
+        if (ics != NULL) 
+        {
             sort_instruction_counters(ics);
             //print_instruction_counters(ics);
             print_csv_table(ics);
@@ -840,7 +854,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
         fprintf(stderr, "%s\n", "--------------------------------------------------------------------------------");
     }
-
 
     return 0;
 }
