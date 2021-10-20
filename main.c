@@ -727,8 +727,9 @@ char * join_hdr_row(const char sep, Header_val *hr)
 
 void print_csv_table(Instructions_table *itable)
 {
-    // char **hdr_items = malloc(32 * 1);
-    // char * hdr_row = join_str(',', );
+    char *str = join_hdr_row(',', itable->header);
+    puts(str);
+    free(str);
 
     // unsigned int columns = 0;
     // /* Print headers */
@@ -942,18 +943,15 @@ int main(int argc, char *argv[])
             itable_add_row(&itable, argv[i], ics);
             //sort_instruction_counters(ics);
             //print_instruction_counters(ics);
-            print_csv_table(&itable);
 
             free(ics);
         }
-        fflush(stdout);
         fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
         fprintf(stderr, "%s\n", "--------------------------------------------------------------------------------");
     }
 
-    char *str = join_hdr_row(',', itable.header);
-    puts(str);
-    free(str);
-
+    print_csv_table(&itable);
+    free(itable.rows);
+    free(itable.file_path);
     return 0;
 }
