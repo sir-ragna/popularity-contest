@@ -118,13 +118,15 @@ typedef struct {
      * See nmd_assembly.h */
 } Counter_container;
 
-typedef char Header_row[32]; /* store 31-byte str */
+typedef char Header_val[32]; /* store 31-byte str */
 typedef unsigned int Counter_row[1508]; /* One row */
 
 typedef struct {
-    Header_row header[1508];
+    Header_val header[1508];
+    unsigned int rowc; /* row count */
     Counter_row *rows; /* list of rows */
-} CSV_data;
+    char **file_path; /* path of each file (row header)*/
+} Instructions_table; /* Usage: https://replit.com/@Sir_Ragnarok/csvstruct#main.c */
 
 Counter_container* count_instructions_64bit(Section_data text) {
     /* Allocate counters and zero initialize */
@@ -687,53 +689,92 @@ char *join_str(const char sep, char **strlst, size_t strc)
     return joined;
 }
 
-void print_csv_table(const Counter_container *cc)
+char * join_hdr_row(const char sep, Header_val *hr)
 {
-    unsigned int columns = 0;
-    /* Print headers */
-    char **col_values = NULL;
-    col_values = (char **)malloc(sizeof(void*) * 1508);
-    for (unsigned short i = 0; i < 1508; i++)
+    char * joined = NULL;
+    unsigned int joined_len = 512;
+    unsigned int joined_index = 0;
+    joined = (char *)malloc(joined_len);
+    memset(joined, 0, joined_len);
+
+    for (unsigned int i = 0; i < 1508; i++)
     {
-        if (cc->counters[i].counter != 0) 
-        {
-            col_values[columns] = (char *)cc->counters[i].instr_str;
-            columns++;
+        char *tmp_str = (char *)hr[i];
+        unsigned int tmp_strlen = strlen(tmp_str);
+
+        while (joined_index + tmp_strlen + 1 > joined_len)
+        {   /* Expand allocation as long as necessary */
+            joined_len += 512;
+            joined = (char *)realloc(joined, joined_len);
+            memset(joined + joined_len - 512, 0, 512);
         }
-    }
 
-    char *header_str = join_str(',', col_values, columns);
-    puts(header_str);
-    free(header_str);
+        strcpy(joined + joined_index, tmp_str);
 
-    /* print values */
-    columns = 0;
-    for (unsigned short i = 0; i < 1508; i++)
-    {
-        if (cc->counters[i].counter != 0) 
-        {
-            /* Convert integer to ASCII 
-             * I don't like any of these: https://stackoverflow.com/questions/4629050/convert-an-int-to-ascii-character/4629161
-             */
-            char *ascii = (char *)malloc(14); 
-            /* 13 characters is enough to print hold the value
-             * 4,294,967,295 (max uint)*/
-            sprintf(ascii, "%d", cc->counters[i].counter);
-            col_values[columns] = ascii;
-            columns++;
+        if (i+1 != 1508)
+        {   /* add separator if this is not the last iteration */
+            joined[joined_index + tmp_strlen] = sep;
         }
+        else
+        {   /* on the last iteration, set the null-byte */
+            joined[joined_index + tmp_strlen] = '\0';
+        }
+        joined_index += tmp_strlen + 1;
     }
-    char *values_str = join_str(',', col_values, columns);
-    puts(values_str);
-    free(values_str);
 
-    /* We need to free ptrs we created to store the ascii strings of the
-     * numbers. */
-    for (size_t i = 0; i < columns; i++)
-    {
-        free(col_values[i]);
-    }
-    free(col_values);    
+    return joined;
+}
+
+void print_csv_table(Instructions_table *itable)
+{
+    // char **hdr_items = malloc(32 * 1);
+    // char * hdr_row = join_str(',', );
+
+    // unsigned int columns = 0;
+    // /* Print headers */
+    // char **col_values = NULL;
+    // col_values = (char **)malloc(sizeof(void*) * 1508);
+    // for (unsigned short i = 0; i < 1508; i++)
+    // {
+    //     if (cc->counters[i].counter != 0) 
+    //     {
+    //         col_values[columns] = (char *)cc->counters[i].instr_str;
+    //         columns++;
+    //     }
+    // }
+
+    // char *header_str = join_str(',', col_values, columns);
+    // puts(header_str);
+    // free(header_str);
+
+    // /* print values */
+    // columns = 0;
+    // for (unsigned short i = 0; i < 1508; i++)
+    // {
+    //     if (cc->counters[i].counter != 0) 
+    //     {
+    //         /* Convert integer to ASCII 
+    //          * I don't like any of these: https://stackoverflow.com/questions/4629050/convert-an-int-to-ascii-character/4629161
+    //          */
+    //         char *ascii = (char *)malloc(14); 
+    //         /* 13 characters is enough to print hold the value
+    //          * 4,294,967,295 (max uint)*/
+    //         sprintf(ascii, "%d", cc->counters[i].counter);
+    //         col_values[columns] = ascii;
+    //         columns++;
+    //     }
+    // }
+    // char *values_str = join_str(',', col_values, columns);
+    // puts(values_str);
+    // free(values_str);
+
+    // /* We need to free ptrs we created to store the ascii strings of the
+    //  * numbers. */
+    // for (size_t i = 0; i < columns; i++)
+    // {
+    //     free(col_values[i]);
+    // }
+    // free(col_values);    
 }
 
 /* Returns a non-zero value on failure */
@@ -823,6 +864,40 @@ int parse_elf_header(const char *filename) {
     return 0;
 }
 
+void itable_add_row(Instructions_table *itable, char *filename, Counter_container *cc)
+{
+    /* add a row */
+    itable->rowc++;
+    /* allocate space to add another row */
+    itable->rows = (Counter_row *)realloc(itable->rows, itable->rowc * sizeof(Counter_row));
+
+    /* add a file name (row header) */
+    /* allocate space to add another ptr */
+    itable->file_path = (char **)realloc(itable->file_path, itable->rowc * sizeof(char *));
+
+    itable->file_path[itable->rowc - 1] = filename;
+    /* We are saving the argv ptrs and not allocating a new string
+     * This if fine here but if we ever use this function in another
+     * context it might make more sense to allocate a new string */
+
+    for (unsigned int i = 0; i < 1508; i++)
+    {
+        if (cc->counters[i].counter != 0)
+        {
+            /* set counter */
+            itable->rows[itable->rowc - 1][i] = cc->counters[i].counter;
+
+            if (cc->counters[i].instr_str[0] != '\0') 
+            { /* If this is not a zero width str, copy over all bytes */
+                for (unsigned char j = 0; j < 31; j++)
+                {
+                    itable->header[i][j] = cc->counters[i].instr_str[j];
+                }
+            }
+        }
+    }
+}
+
 int main(int argc, char *argv[]) 
 {
     if (argc < 2) 
@@ -855,15 +930,19 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    Instructions_table itable;
+    memset(&itable, 0, sizeof(Instructions_table));
+
     for (int i = 1; i < argc; i++) 
     {
         fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
         Counter_container *ics = count_instructions_in_file(argv[i]);
         if (ics != NULL) 
         {
-            sort_instruction_counters(ics);
+            itable_add_row(&itable, argv[i], ics);
+            //sort_instruction_counters(ics);
             //print_instruction_counters(ics);
-            print_csv_table(ics);
+            print_csv_table(&itable);
 
             free(ics);
         }
@@ -871,6 +950,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
         fprintf(stderr, "%s\n", "--------------------------------------------------------------------------------");
     }
+
+    char *str = join_hdr_row(',', itable.header);
+    puts(str);
+    free(str);
 
     return 0;
 }
