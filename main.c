@@ -701,6 +701,18 @@ char * join_hdr_row(const char sep, Header_val *hr)
     {
         char *tmp_str = (char *)hr[i];
         unsigned int tmp_strlen = strlen(tmp_str);
+        if (tmp_strlen == 0)
+        {   /* Skip headers of zero length */
+            if (i+1 != 1508)
+            {   /* not the last iteration */
+                continue;
+            }
+            else
+            {   /* This was the last iteration, put null-byte in place */
+                joined[joined_index + tmp_strlen] = '\0';
+                break;
+            }
+        }
 
         while (joined_index + tmp_strlen + 1 > joined_len)
         {   /* Expand allocation as long as necessary */
@@ -738,6 +750,12 @@ void print_csv_table(Instructions_table *itable)
         printf("%s,", itable->file_path[rowi]);
         for (unsigned short coli = 0; coli < 1508; coli++)
         {
+            if (itable->header[coli][0] == '\0') 
+            {
+                /* empty header, skip this one */
+                continue;    
+            }
+
             if (coli == 1507) {
                 printf("%u", itable->rows[rowi][coli]);
             }
@@ -747,53 +765,7 @@ void print_csv_table(Instructions_table *itable)
             }
         }
         puts("");
-    }
-
-    // unsigned int columns = 0;
-    // /* Print headers */
-    // char **col_values = NULL;
-    // col_values = (char **)malloc(sizeof(void*) * 1508);
-    // for (unsigned short i = 0; i < 1508; i++)
-    // {
-    //     if (cc->counters[i].counter != 0) 
-    //     {
-    //         col_values[columns] = (char *)cc->counters[i].instr_str;
-    //         columns++;
-    //     }
-    // }
-
-    // char *header_str = join_str(',', col_values, columns);
-    // puts(header_str);
-    // free(header_str);
-
-    // /* print values */
-    // columns = 0;
-    // for (unsigned short i = 0; i < 1508; i++)
-    // {
-    //     if (cc->counters[i].counter != 0) 
-    //     {
-    //         /* Convert integer to ASCII 
-    //          * I don't like any of these: https://stackoverflow.com/questions/4629050/convert-an-int-to-ascii-character/4629161
-    //          */
-    //         char *ascii = (char *)malloc(14); 
-    //         /* 13 characters is enough to print hold the value
-    //          * 4,294,967,295 (max uint)*/
-    //         sprintf(ascii, "%d", cc->counters[i].counter);
-    //         col_values[columns] = ascii;
-    //         columns++;
-    //     }
-    // }
-    // char *values_str = join_str(',', col_values, columns);
-    // puts(values_str);
-    // free(values_str);
-
-    // /* We need to free ptrs we created to store the ascii strings of the
-    //  * numbers. */
-    // for (size_t i = 0; i < columns; i++)
-    // {
-    //     free(col_values[i]);
-    // }
-    // free(col_values);    
+    }  
 }
 
 /* Returns a non-zero value on failure */
@@ -893,7 +865,6 @@ void itable_add_row(Instructions_table *itable, char *filename, Counter_containe
     memset(itable->rows + (itable->rowc - 1), 0, sizeof(Counter_row));
     // memset(((char *)itable->rows) + ((itable->rowc - 1) * sizeof(Counter_row)), 0, sizeof(Counter_row));
 
-
     /* add a file name (row header) */
     /* allocate space to add another ptr */
     itable->file_path = (char **)realloc(itable->file_path, itable->rowc * sizeof(char *));
@@ -966,8 +937,6 @@ int main(int argc, char *argv[])
         {
             itable_add_row(&itable, argv[i], ics);
             //sort_instruction_counters(ics);
-            //print_instruction_counters(ics);
-
             free(ics);
         }
         fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
