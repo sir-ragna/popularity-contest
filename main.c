@@ -731,6 +731,15 @@ void print_csv_table(Instructions_table *itable)
     puts(str);
     free(str);
 
+    for (unsigned int rowi = 0; rowi < itable->rowc; rowi++)
+    {
+        for (unsigned short coli = 0; coli < 1508; coli++)
+        {
+            printf("%u,", itable->rows[rowi][coli]);
+        }
+        puts("");
+    }
+
     // unsigned int columns = 0;
     // /* Print headers */
     // char **col_values = NULL;
@@ -871,10 +880,14 @@ void itable_add_row(Instructions_table *itable, char *filename, Counter_containe
     itable->rowc++;
     /* allocate space to add another row */
     itable->rows = (Counter_row *)realloc(itable->rows, itable->rowc * sizeof(Counter_row));
+    /* Initialize newly allocated memory with 0-bytes */
+    memset(itable->rows + ((itable->rowc - 1) * sizeof(Counter_row)), 0, sizeof(Counter_row));
 
     /* add a file name (row header) */
     /* allocate space to add another ptr */
     itable->file_path = (char **)realloc(itable->file_path, itable->rowc * sizeof(char *));
+    /* Initialize newly allocated memory with 0-bytes */
+    memset(itable->file_path + ((itable->rowc - 1) * sizeof(char *)), 0, sizeof(char *));
 
     itable->file_path[itable->rowc - 1] = filename;
     /* We are saving the argv ptrs and not allocating a new string
