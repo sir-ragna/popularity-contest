@@ -727,15 +727,24 @@ char * join_hdr_row(const char sep, Header_val *hr)
 
 void print_csv_table(Instructions_table *itable)
 {
+    printf("*filename*,");
     char *str = join_hdr_row(',', itable->header);
     puts(str);
     free(str);
 
+
     for (unsigned int rowi = 0; rowi < itable->rowc; rowi++)
-    {
+    {   
+        printf("%s,", itable->file_path[rowi]);
         for (unsigned short coli = 0; coli < 1508; coli++)
         {
-            printf("%u,", itable->rows[rowi][coli]);
+            if (coli == 1507) {
+                printf("%u", itable->rows[rowi][coli]);
+            }
+            else
+            {
+                printf("%u,", itable->rows[rowi][coli]);
+            }
         }
         puts("");
     }
@@ -881,13 +890,15 @@ void itable_add_row(Instructions_table *itable, char *filename, Counter_containe
     /* allocate space to add another row */
     itable->rows = (Counter_row *)realloc(itable->rows, itable->rowc * sizeof(Counter_row));
     /* Initialize newly allocated memory with 0-bytes */
-    memset(itable->rows + ((itable->rowc - 1) * sizeof(Counter_row)), 0, sizeof(Counter_row));
+    memset(itable->rows + (itable->rowc - 1), 0, sizeof(Counter_row));
+    // memset(((char *)itable->rows) + ((itable->rowc - 1) * sizeof(Counter_row)), 0, sizeof(Counter_row));
+
 
     /* add a file name (row header) */
     /* allocate space to add another ptr */
     itable->file_path = (char **)realloc(itable->file_path, itable->rowc * sizeof(char *));
     /* Initialize newly allocated memory with 0-bytes */
-    memset(itable->file_path + ((itable->rowc - 1) * sizeof(char *)), 0, sizeof(char *));
+    memset(itable->file_path + (itable->rowc - 1), 0, sizeof(char *));
 
     itable->file_path[itable->rowc - 1] = filename;
     /* We are saving the argv ptrs and not allocating a new string
