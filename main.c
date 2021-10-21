@@ -737,6 +737,19 @@ char * join_hdr_row(const char sep, Header_val *hr)
     return joined;
 }
 
+/* Concats 2 strings */
+char * str_cat(char *str1, char *str2)
+{
+    char *out = NULL;
+    int s1_len = strlen(str1);
+    int s2_len = strlen(str2);
+    out = (char *)malloc(s1_len + s2_len + 1);
+    strcpy(out, str1);
+    strcpy(out + s1_len - 1, str2);
+    out[s1_len + s2_len] = '\0';
+    return out;
+}
+
 void print_csv_table(Instructions_table *itable)
 {
     printf("*filename*,");
@@ -755,7 +768,8 @@ void print_csv_table(Instructions_table *itable)
                 /* empty header, skip this one */
                 continue;    
             }
-
+            /* TODO: there is a bug here. If the last column isn't filled
+             * we will be printing one comma too many.*/
             if (coli == 1507) {
                 printf("%u", itable->rows[rowi][coli]);
             }
