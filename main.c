@@ -745,7 +745,7 @@ char * str_cat(char *str1, char *str2)
     int s2_len = strlen(str2);
     out = (char *)malloc(s1_len + s2_len + 1);
     strcpy(out, str1);
-    strcpy(out + s1_len - 1, str2);
+    strcpy(out + s1_len, str2);
     out[s1_len + s2_len] = '\0';
     return out;
 }
