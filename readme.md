@@ -1,12 +1,12 @@
 
 ![Valgrind memcheck](https://github.com/sir-ragna/popularity-contest/actions/workflows/makefile.yml/badge.svg)
 
-# What CPU instructions are the most popular?
+# What is the most popular instruction?
 
 That is the question that I wanted to answer.
 
-You can run it on an x64 ELF file and it will read out the .text section
-if it can find it and count the instructions, writing the results to stdout 
+You can run it on an x64 ELF files and it will read out the `.text` 
+section and count the instructions, writing the results to stdout 
 comma-separated format.
 
 ```txt
@@ -16,8 +16,8 @@ comma-separated format.
 /usr/bin/bash,706,3779,1110,127,141,1398,2210,5364,7602,1,0,240,316,99,9272,23,31,7,68,3,12,12679,6805,3774,0,1,52,86,9428,5864,321,326,300,120,0,85,130,590,336,0,0,0,0,3,0,0,1921,1,1,0,0,0,0,0,1,14,2,8,170,161,4,3,10,13,6,11,13,10,0,0,44,5,6,1,0,0,0,0,0,0,0,0,9,137,0,0,0,214,0,6387,45623,103,31,1,4,237,1601,1557,7635,5332,20,0,0,0,44,5
 ```
 
-Progress and errors are written to stderr. The CSV lines are written
-to stdout.
+Progress and errors are written to stderr. 
+The CSV lines are written to stdout.
 
 ![Example usage](imgs/example-usage.gif)
 
@@ -27,7 +27,10 @@ There exist about 1500+ instructions in x86-64.
 If one wanted to learn x86-64, maybe it is reasonable to look into 
 which instructions are the most used.
 
-Which lead me to the question, which instructions are the most popular?
+Which lead me to the questions. Which instructions is the most popular?
+How about a top 5? What if I could count them all?
+
+![Data visualisation example](imgs/data-visualisation-example.png)
 
 ## Building
 
