@@ -29,11 +29,6 @@ which instructions are the most used.
 
 Which lead me to the question, which instructions are the most popular?
 
-## Build upon other works
-
-This project wouldn't have been possible without 
-https://github.com/Nomade040/nmd
-
 ## Building
 
 Download the source.
