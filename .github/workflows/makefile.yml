@@ -21,4 +21,4 @@ jobs:
       run: make debug
       
     - name: Run valgrind
-      run: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./main main 2>/dev/null >/dev/null
+      run: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./main main
