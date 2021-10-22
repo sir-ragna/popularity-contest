@@ -1,4 +1,6 @@
 
+![Valgrind memcheck](https://github.com/sir-ragna/popularity-contest/actions/workflows/makefile.yml/badge.svg)
+
 # What CPU instructions are the most popular?
 
 That is the question that I wanted to answer.
