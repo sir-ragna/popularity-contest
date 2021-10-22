@@ -12,7 +12,7 @@ perf: $(TARGET).c
 	$(CC) -pg -g -Wall -o $(TARGET) $(TARGET).c
 
 release: $(TARGET).c
-	$(CC) -O3 -Wall -o $(TARGET) $(TARGET).c
+	$(CC) -O2 -Wall -o $(TARGET) $(TARGET).c
 
 $(TARGET): $(TARGET).c
 	$(CC) $(CFLAGS) -o $(TARGET) $(TARGET).c
