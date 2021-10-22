@@ -14,6 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
+    - name: Install valgrind
+      run: sudo apt-get install valgrind
+    
     - name: Setup Git submodules
       run: git submodule update --init --recursive
       
