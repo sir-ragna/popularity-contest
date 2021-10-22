@@ -1,4 +1,4 @@
-name: Makefile CI
+name: Valgrind
 
 on:
   push:
