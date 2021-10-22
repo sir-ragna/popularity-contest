@@ -6,7 +6,7 @@
 That is the question that I wanted to answer.
 
 You can run it on an x64 ELF files and it will read out the `.text` 
-section and count the instructions, writing the results to stdout 
+section and count the instructions, writing the results to stdout in 
 comma-separated format.
 
 ```txt
@@ -27,8 +27,8 @@ There exist about 1500+ instructions in x86-64.
 If one wanted to learn x86-64, maybe it is reasonable to look into 
 which instructions are the most used.
 
-Which lead me to the questions. Which instructions is the most popular?
-How about a top 5? What if I could count them all?
+Which lead me to the question, which instruction is the most popular?
+How about the top 5? What if I could count them all?
 
 Why does x86 have so many variations in jump instructions?
 
