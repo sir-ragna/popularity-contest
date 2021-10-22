@@ -30,6 +30,8 @@ which instructions are the most used.
 Which lead me to the questions. Which instructions is the most popular?
 How about a top 5? What if I could count them all?
 
+Why does x86 have so many variations in jump instructions?
+
 ![Data visualisation example](imgs/data-visualisation-example.png)
 
 ## Building
@@ -53,7 +55,8 @@ Then you can compile it with your compiler of choice.
 gcc -Wall -O2 -o main main.c
 ```
 
-There is also a make file that uses clang.
+There is also a Makefile. It has `make release`, `make debug` and 
+`make perf`. Check [perf.md](perf.md) for that last one.
 
 ![cmd: make release](imgs/make-release.gif)
 
