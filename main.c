@@ -1,6 +1,8 @@
 #define NMD_ASSEMBLY_IMPLEMENTATION
 #include "nmd/nmd_assembly.h" // from https://github.com/Nomade040/nmd
 
+#include "flag-parser/flagparser.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -909,34 +911,24 @@ void itable_add_row(Instructions_table *itable, char *filename, Counter_containe
 }
 
 int main(int argc, char *argv[]) 
-{
+{  
+    char *parse_only = NULL;
+
+    flg_str_var(&parse_only, "-p", NULL, "Print the ELF header of this file");
+    
     if (argc < 2) 
     {
-        fprintf(stderr, "Usage: %s [options] [64ELFbinary]...\n", argv[0]);
-        fprintf(stderr, "\t-p Only parse the ELF header\n");
+        /* INo args are given, print the args and exit */
+        flg_print_usage(argv[0]);
         return 1;
     }
 
-    bool parse_elf_only = false;
+    flg_parse_flags(argc, argv);
 
-    for (int i = 1; i < argc; i++) 
+    if (parse_only != NULL)
     {
-        if (argv[i][0] == '-' && argv[i][1] == 'p') 
-        {
-            parse_elf_only = true;
-        }
-    }
-
-    if (parse_elf_only) {
-        for (int i = 1; i < argc; i++) 
-        {
-            if (strcmp("-p", argv[i]) == 0) 
-            {
-                continue;
-            }
-            printf("File name: %s\n", argv[i]);
-            parse_elf_header(argv[i]);
-        }
+        printf("File name: %s\n", parse_only);
+        parse_elf_header(parse_only);
         return 0;
     }
 
