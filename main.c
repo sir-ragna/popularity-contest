@@ -127,7 +127,7 @@ typedef struct {
     Header_val header[1508];
     unsigned int rowc; /* row count */
     Counter_row *rows; /* list of rows */
-    char **file_path; /* path of each file (row header)*/
+    const char **file_path; /* path of each file (row header)*/
 } Instructions_table; /* Usage: https://replit.com/@Sir_Ragnarok/csvstruct#main.c */
 
 Counter_container* count_instructions_64bit(Section_data text) {
@@ -871,7 +871,7 @@ int parse_elf_header(const char *filename) {
     return 0;
 }
 
-void itable_add_row(Instructions_table *itable, char *filename, Counter_container *cc)
+void itable_add_row(Instructions_table *itable, const char *filename, Counter_container *cc)
 {
     /* add a row */
     itable->rowc++;
@@ -883,7 +883,7 @@ void itable_add_row(Instructions_table *itable, char *filename, Counter_containe
 
     /* add a file name (row header) */
     /* allocate space to add another ptr */
-    itable->file_path = (char **)realloc(itable->file_path, itable->rowc * sizeof(char *));
+    itable->file_path = (const char **)realloc(itable->file_path, itable->rowc * sizeof(char *));
     /* Initialize newly allocated memory with 0-bytes */
     memset(itable->file_path + (itable->rowc - 1), 0, sizeof(char *));
 
@@ -910,7 +910,7 @@ void itable_add_row(Instructions_table *itable, char *filename, Counter_containe
     }
 }
 
-int main(int argc, char *argv[]) 
+int main(int argc, const char *argv[]) 
 {  
     char *parse_only = NULL;
 
