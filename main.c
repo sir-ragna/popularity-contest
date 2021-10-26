@@ -8,6 +8,12 @@
 #include <string.h>
 #include <assert.h>
 
+#define MAX_INSTRUCTIONS 1508
+/* The 1508 comes from nmd_assembly.h, I took the last enum 
+ * NMD_X86_INSTRUCTION and took the last value and added one.
+ * printf("highest instruction enum: %d\n", NMD_X86_INSTRUCTION_ENDBR64);
+ * See nmd_assembly.h */
+
 /* The first 16 bytes. This will tell use bit-Arch, endianness, ... */
 typedef struct 
 {
@@ -107,24 +113,22 @@ typedef struct {
     size_t datalen;
 } Section_data;
 
+#define MNEMONIC_BYTES 32
+
 typedef struct {
     unsigned int counter; // count occurences
-    char instr_str[32];   // store mnemonic
+    char instr_str[MNEMONIC_BYTES];   // store mnemonic
 } Instruction_counter;
 
 typedef struct {
-    Instruction_counter counters[1508];
-    /* The 1508 comes from nmd_assembly.h, I took the last enum 
-     * NMD_X86_INSTRUCTION and took the last value and added one.
-     * printf("highest instruction enum: %d\n", NMD_X86_INSTRUCTION_ENDBR64);
-     * See nmd_assembly.h */
+    Instruction_counter counters[MAX_INSTRUCTIONS];
 } Counter_container;
 
-typedef char Header_val[32]; /* store 31-byte str */
-typedef unsigned int Counter_row[1508]; /* One row */
+typedef char Header_val[MNEMONIC_BYTES]; /* store 31-byte str */
+typedef unsigned int Counter_row[MAX_INSTRUCTIONS]; /* One row */
 
 typedef struct {
-    Header_val header[1508];
+    Header_val header[MAX_INSTRUCTIONS];
     unsigned int rowc; /* row count */
     Counter_row *rows; /* list of rows */
     const char **file_path; /* path of each file (row header)*/
@@ -155,7 +159,8 @@ Counter_container* count_instructions_64bit(Section_data text) {
                 (size_t)data_end - (text.datalen + i), /* remaining size of the buffer */
                 &instruction, /* Output */
                 NMD_X86_MODE_64, 
-                NMD_X86_DECODER_FLAGS_ALL)) 
+                NMD_X86_DECODER_FLAGS_ALL)
+            ) 
         {
             break; /* failed to decode */
             /* TODO error stuff? Clean up and return NULL?  */
@@ -164,12 +169,17 @@ Counter_container* count_instructions_64bit(Section_data text) {
                 "instruction (addr: %#016lx)\n", i, (uint64_t)text.data + i);
         }
         /* might have to switch back to: NMD_X86_FORMAT_FLAGS_DEFAULT */
-        nmd_x86_format(&instruction, formatted_instruction, NMD_X86_INVALID_RUNTIME_ADDRESS, NMD_X86_FORMAT_FLAGS_HEX);
+        nmd_x86_format(&instruction, 
+            formatted_instruction, 
+            NMD_X86_INVALID_RUNTIME_ADDRESS, 
+            NMD_X86_FORMAT_FLAGS_HEX
+        );
         
         //printf("%s\n", formatted_instruction); // print as test
 
         /* copy the first 32 (or till the first space) bytes into instr_str */
-        for (unsigned char k = 0; k < 31        /* max of 31 bytes
+        for (unsigned char k = 0; k < (MNEMONIC_BYTES - 1) 
+                                                /* max of 31 bytes
                                                  * the 32th byte has to
                                                  * remain zero so we 
                                                  * have a cstring. */
@@ -416,7 +426,10 @@ int parse_64_bit_header(FILE *fp) {
     printf("Program header table offset: %ld\n", elfheader.e_phoff);
     printf("Section header table offset: %ld\n", elfheader.e_shoff);
     printf("Flags: %#08x\n", elfheader.e_flags);
-    printf("ELF Header size: %#04x (%i bytes)\n", elfheader.e_ehsize, elfheader.e_ehsize);
+    printf("ELF Header size: %#04x (%i bytes)\n", 
+        elfheader.e_ehsize, 
+        elfheader.e_ehsize
+    );
 
     if (elfheader.e_ehsize != 64) {
         // I don't know in which situation this isn't 64.
@@ -444,7 +457,9 @@ int parse_64_bit_header(FILE *fp) {
 
     /* Allocate the required memory */
     Elf64_sectionheader *section_headers;
-    section_headers = (Elf64_sectionheader *)malloc(sizeof(Elf64_sectionheader) * elfheader.e_shnum);
+    section_headers = (Elf64_sectionheader *)malloc(
+        sizeof(Elf64_sectionheader) * elfheader.e_shnum
+    );
 
     /* Read out the section headers */
     for (int i = 0; i < elfheader.e_shnum; i++) {
@@ -611,7 +626,7 @@ void sort_instruction_counters(Counter_container *ics) {
     bool swapped_any_value = false;
 
     unsigned short possible_instructions = sizeof(Counter_container) / sizeof(Instruction_counter);
-    assert(possible_instructions == 1508);
+    assert(possible_instructions == MAX_INSTRUCTIONS);
     for (unsigned short i = 0; i < possible_instructions; i++)
     {
         for (unsigned short j = 1; j < possible_instructions; j++)
@@ -636,7 +651,7 @@ void sort_instruction_counters(Counter_container *ics) {
 }
 
 void print_instruction_counters(Counter_container *ics) {
-    for (unsigned short i = 0; i < 1508; i++) {
+    for (unsigned short i = 0; i < MAX_INSTRUCTIONS; i++) {
         if (ics->counters[i].counter != 0) {
             printf("%s\t%d\n", ics->counters[i].instr_str, ics->counters[i].counter);
         }
@@ -699,13 +714,13 @@ char * join_hdr_row(const char sep, Header_val *hr)
     joined = (char *)malloc(joined_len);
     memset(joined, 0, joined_len);
 
-    for (unsigned int i = 0; i < 1508; i++)
+    for (unsigned int i = 0; i < MAX_INSTRUCTIONS; i++)
     {
         char *tmp_str = (char *)hr[i];
         unsigned int tmp_strlen = strlen(tmp_str);
         if (tmp_strlen == 0)
         {   /* Skip headers of zero length */
-            if (i+1 != 1508)
+            if (i+1 != MAX_INSTRUCTIONS)
             {   /* not the last iteration */
                 continue;
             }
@@ -725,7 +740,7 @@ char * join_hdr_row(const char sep, Header_val *hr)
 
         strcpy(joined + joined_index, tmp_str);
 
-        if (i+1 != 1508)
+        if (i+1 != MAX_INSTRUCTIONS)
         {   /* add separator if this is not the last iteration */
             joined[joined_index + tmp_strlen] = sep;
         }
@@ -763,7 +778,7 @@ void print_csv_table(Instructions_table *itable)
     for (unsigned int rowi = 0; rowi < itable->rowc; rowi++)
     {   
         printf("%s,", itable->file_path[rowi]);
-        for (unsigned short coli = 0; coli < 1508; coli++)
+        for (unsigned short coli = 0; coli < MAX_INSTRUCTIONS; coli++)
         {
             if (itable->header[coli][0] == '\0') 
             {
@@ -772,7 +787,7 @@ void print_csv_table(Instructions_table *itable)
             }
             /* TODO: there is a bug here. If the last column isn't filled
              * we will be printing one comma too many.*/
-            if (coli == 1507) {
+            if (coli + 1 == MAX_INSTRUCTIONS) {
                 printf("%u", itable->rows[rowi][coli]);
             }
             else
@@ -892,7 +907,7 @@ void itable_add_row(Instructions_table *itable, const char *filename, Counter_co
      * This if fine here but if we ever use this function in another
      * context it might make more sense to allocate a new string */
 
-    for (unsigned int i = 0; i < 1508; i++)
+    for (unsigned int i = 0; i < MAX_INSTRUCTIONS; i++)
     {
         if (cc->counters[i].counter != 0)
         {
