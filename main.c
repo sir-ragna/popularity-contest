@@ -770,35 +770,24 @@ char * str_cat(char *str1, char *str2)
 
 void print_total_sum(Instructions_table *itable)
 {
-    char *header_str = join_hdr_row(',', itable->header);
-    puts(header_str);
-    free(header_str);
-
     unsigned short coli; /* column index */
     unsigned int rowi; /* row index */
     unsigned int total_instr;
-
-    /* Max possible out str */
-    char outbuff[MAX_INSTRUCTIONS * MNEMONIC_BYTES];
-    unsigned int outbuff_i = 0;
+    printf("mnemonic,total instructions\n");
 
     for (coli = 0; coli < MAX_INSTRUCTIONS; coli++)
     {
         if (itable->header[coli][0] == '\0')
             continue; /* Skip empty columns */
 
-        total_instr = 0;    
+        total_instr = 0;
         
         for (rowi = 0; rowi < itable->rowc; rowi++)
         {
             total_instr += itable->rows[rowi][coli];
         }
-        outbuff_i += sprintf(outbuff + outbuff_i, "%i", total_instr);
-        outbuff[outbuff_i] = ',';
-        outbuff_i++;
+        printf("%s,%i\n", itable->header[coli], total_instr);
     }
-    outbuff[outbuff_i - 1] = '\0';
-    puts(outbuff);
 }
 
 void print_csv_table(Instructions_table *itable)
