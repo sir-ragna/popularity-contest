@@ -309,7 +309,8 @@ Section_data get_text_section(FILE *fp) {
 }
 
 /* Returns a non-zero value on failure */
-Counter_container* count_instructions_in_file(const char *filename) {
+Counter_container* count_instructions_in_file(const char *filename) 
+{
     
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -927,25 +928,27 @@ void itable_add_row(Instructions_table *itable, const char *filename, Counter_co
 
 int main(int argc, const char *argv[]) 
 {  
-    char *parse_only = NULL;
+    bool *parse_only = flg_bool_arg(
+        "-p", 
+        "--parse-elf-only", 
+        "Only print the ELF header of these files"
+    );
 
-    flg_str_var(&parse_only, "-p", NULL, "Print the ELF header of this file");
+    flg_define_rest_collection("FILE", 1, "Files to process");
+
+    int offset = flg_parse_flags(argc, argv);
     
-    if (argc < 2) 
+    if (*parse_only)
     {
-        /* INo args are given, print the args and exit */
-        flg_print_usage(argv[0]);
-        return 1;
-    }
-
-    flg_parse_flags(argc, argv);
-
-    if (parse_only != NULL)
-    {
-        printf("File name: %s\n", parse_only);
-        parse_elf_header(parse_only);
+        for (int i = offset; i < argc; i++)
+        {
+            printf("File name: %s\n", argv[i]);
+            parse_elf_header(argv[i]);
+        }
+        free(parse_only);
         return 0;
     }
+    free(parse_only);
 
     Instructions_table itable;
     memset(&itable, 0, sizeof(Instructions_table));
@@ -960,8 +963,9 @@ int main(int argc, const char *argv[])
             //sort_instruction_counters(ics);
             free(ics);
         }
-        fprintf(stderr, "End of popularity contest: %s\n", argv[i]);
-        fprintf(stderr, "%s\n", "--------------------------------------------------------------------------------");
+        fprintf(stderr, "End of popularity contest: %s\n"
+        "-------------------------------------------------------------"
+        "-------------------\n", argv[i]);
     }
 
     print_csv_table(&itable);
