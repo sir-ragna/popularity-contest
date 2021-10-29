@@ -768,6 +768,39 @@ char * str_cat(char *str1, char *str2)
     return out;
 }
 
+void print_total_sum(Instructions_table *itable)
+{
+    char *header_str = join_hdr_row(',', itable->header);
+    puts(header_str);
+    free(header_str);
+
+    unsigned short coli; /* column index */
+    unsigned int rowi; /* row index */
+    unsigned int total_instr;
+
+    /* Max possible out str */
+    char outbuff[MAX_INSTRUCTIONS * MNEMONIC_BYTES];
+    unsigned int outbuff_i = 0;
+
+    for (coli = 0; coli < MAX_INSTRUCTIONS; coli++)
+    {
+        if (itable->header[coli][0] == '\0')
+            continue; /* Skip empty columns */
+
+        total_instr = 0;    
+        
+        for (rowi = 0; rowi < itable->rowc; rowi++)
+        {
+            total_instr += itable->rows[rowi][coli];
+        }
+        outbuff_i += sprintf(outbuff + outbuff_i, "%i", total_instr);
+        outbuff[outbuff_i] = ',';
+        outbuff_i++;
+    }
+    outbuff[outbuff_i - 1] = '\0';
+    puts(outbuff);
+}
+
 void print_csv_table(Instructions_table *itable)
 {
     printf("*filename*,");
@@ -934,6 +967,12 @@ int main(int argc, const char *argv[])
         "Only print the ELF header of these files"
     );
 
+    bool *sum_total = flg_bool_arg(
+        "-t",
+        "--sum-total",
+        "Only print the total instructions for all given files"
+    );
+
     flg_define_rest_collection("FILE", 1, "Files to process");
 
     int offset = flg_parse_flags(argc, argv);
@@ -953,7 +992,7 @@ int main(int argc, const char *argv[])
     Instructions_table itable;
     memset(&itable, 0, sizeof(Instructions_table));
 
-    for (int i = 1; i < argc; i++) 
+    for (int i = offset ; i < argc; i++) 
     {
         fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
         Counter_container *ics = count_instructions_in_file(argv[i]);
@@ -968,7 +1007,12 @@ int main(int argc, const char *argv[])
         "-------------------\n", argv[i]);
     }
 
-    print_csv_table(&itable);
+    if (*sum_total)
+        print_total_sum(&itable);
+    else
+        print_csv_table(&itable);
+
+    free(sum_total);
     free(itable.rows);
     free(itable.file_path);
     return 0;
