@@ -773,21 +773,28 @@ void print_total_sum(Instructions_table *itable, char separator)
     unsigned short coli; /* column index */
     unsigned int rowi; /* row index */
     unsigned int total_instr;
-    printf("mnemonic%ctotal instructions\n", separator);
+    unsigned int total_files;
+    printf("mnemonic%ctotal instructions%cUsed in files(Total files processed: %i)\n", separator, separator, itable->rowc);
 
     for (coli = 0; coli < MAX_INSTRUCTIONS; coli++)
     {
         if (itable->header[coli][0] == '\0')
             continue; /* Skip empty columns */
 
-        total_instr = 0;
+        total_instr = 0; /* SUM of instrucation usage across all files */
+        total_files = 0; /* How files contain this instruction? */
         
         for (rowi = 0; rowi < itable->rowc; rowi++)
         {
             total_instr += itable->rows[rowi][coli];
+
+            if (itable->rows[rowi][coli] > 0)
+                total_files++; /* This file uses this instruction */
+
         }
-        printf("%s%c%i\n", itable->header[coli], separator, total_instr);
+        printf("%s%c%i%c%i\n", itable->header[coli], separator, total_instr, separator, total_files);
     }
+
 }
 
 void print_csv_table(Instructions_table *itable, char separator)
@@ -829,6 +836,7 @@ char separator_escape_char(char *separator_input)
     /* Escape character detected */
     if (separator_input[0] == '\\')
     {
+        /* I don't really know why I added escape chars other than tabs */
         switch (separator_input[1])
         {
         case 'a':
@@ -1006,7 +1014,7 @@ int main(int argc, const char *argv[])
         "-s", 
         "--separator", 
         ",", 
-        "Separator for CSV output"
+        "Separator for CSV output. Example -s \"\\t\" or -s \";\""
     );
 
 
