@@ -768,12 +768,12 @@ char * str_cat(char *str1, char *str2)
     return out;
 }
 
-void print_total_sum(Instructions_table *itable)
+void print_total_sum(Instructions_table *itable, char separator)
 {
     unsigned short coli; /* column index */
     unsigned int rowi; /* row index */
     unsigned int total_instr;
-    printf("mnemonic,total instructions\n");
+    printf("mnemonic%ctotal instructions\n", separator);
 
     for (coli = 0; coli < MAX_INSTRUCTIONS; coli++)
     {
@@ -786,21 +786,21 @@ void print_total_sum(Instructions_table *itable)
         {
             total_instr += itable->rows[rowi][coli];
         }
-        printf("%s,%i\n", itable->header[coli], total_instr);
+        printf("%s%c%i\n", itable->header[coli], separator, total_instr);
     }
 }
 
-void print_csv_table(Instructions_table *itable)
+void print_csv_table(Instructions_table *itable, char separator)
 {
-    printf("*filename*,");
-    char *str = join_hdr_row(',', itable->header);
+    printf("*filename*%c", separator);
+    char *str = join_hdr_row(separator, itable->header);
     puts(str);
     free(str);
 
 
     for (unsigned int rowi = 0; rowi < itable->rowc; rowi++)
     {   
-        printf("%s,", itable->file_path[rowi]);
+        printf("%s%c", itable->file_path[rowi], separator);
         for (unsigned short coli = 0; coli < MAX_INSTRUCTIONS; coli++)
         {
             if (itable->header[coli][0] == '\0') 
@@ -815,11 +815,51 @@ void print_csv_table(Instructions_table *itable)
             }
             else
             {
-                printf("%u,", itable->rows[rowi][coli]);
+                printf("%u%c", itable->rows[rowi][coli], separator);
             }
         }
         puts("");
     }  
+}
+
+/* Converts escape characters such as tabs. Otherwise returns the first
+ * character of the given string. Handles \a \b \t \n \v \f \r */
+char separator_escape_char(char *separator_input)
+{
+    /* Escape character detected */
+    if (separator_input[0] == '\\')
+    {
+        switch (separator_input[1])
+        {
+        case 'a':
+            return '\a';
+            break; /* Unnecessary breaks, just a good habit */
+        case 'b':
+            return '\b';
+            break;
+        case 't':
+            return '\t';
+            break;
+        case 'n':
+            return '\n';
+            break;
+        case 'v':
+            return '\v';
+            break;
+        case 'f':
+            return '\f';
+            break;
+        case 'r':
+            return '\r';
+            break;
+        case ' ': /* In case someone needlessly tries to escape a space */
+            return ' ';
+            break;
+        }
+    }
+
+    /* Simply return the first character */
+    return separator_input[0];
 }
 
 /* Returns a non-zero value on failure */
@@ -962,9 +1002,21 @@ int main(int argc, const char *argv[])
         "Only print the total instructions for all given files"
     );
 
+    char **separator_str = flg_string_arg(
+        "-s", 
+        "--separator", 
+        ",", 
+        "Separator for CSV output"
+    );
+
+
     flg_define_rest_collection("FILE", 1, "Files to process");
 
     int offset = flg_parse_flags(argc, argv);
+
+    /* Table of instruction counters */
+    Instructions_table itable;
+    memset(&itable, 0, sizeof(Instructions_table)); /* init on zero */
     
     if (*parse_only)
     {
@@ -973,14 +1025,10 @@ int main(int argc, const char *argv[])
             printf("File name: %s\n", argv[i]);
             parse_elf_header(argv[i]);
         }
-        free(parse_only);
-        return 0;
+        goto clean_up; /* Jump to clean up and return */
     }
-    free(parse_only);
 
-    Instructions_table itable;
-    memset(&itable, 0, sizeof(Instructions_table));
-
+    /* Count instructions for all [FILEs]... */
     for (int i = offset ; i < argc; i++) 
     {
         fprintf(stderr, "Running popularity contest for: %s\n", argv[i]);
@@ -996,13 +1044,35 @@ int main(int argc, const char *argv[])
         "-------------------\n", argv[i]);
     }
 
-    if (*sum_total)
-        print_total_sum(&itable);
-    else
-        print_csv_table(&itable);
+    /* Figure out the separator. Tab chars can be escaped "\t" otherwise
+     * pick the first character */
+    char separator_chr = separator_escape_char(*separator_str);
 
-    free(sum_total);
-    free(itable.rows);
-    free(itable.file_path);
+    /* Either we output the total sum or we output the whole CSV table */
+    if (*sum_total)
+        print_total_sum(&itable, separator_chr);
+    else
+        print_csv_table(&itable, separator_chr);
+
+    clean_up: /* Free all memory & exit */
+
+    if (separator_str != NULL)
+    {
+        if (*separator_str != NULL)
+            free(*separator_str);
+        free(separator_str);
+    }
+
+    if (parse_only)
+        free(parse_only);
+
+    if (sum_total)
+        free(sum_total);
+    
+    if (itable.rows)
+        free(itable.rows);
+    
+    if (itable.file_path)
+        free(itable.file_path);
     return 0;
 }
